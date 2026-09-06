@@ -442,19 +442,24 @@ Full mapping in [[naming]].
 
 ---
 
+## 28. php-cs-fixer with `@Symfony`, minus the concatenation spacing
+
+**Decided (owner, 2026-09-06).** The `@Symfony` ruleset, with `concat_space` overridden to `none`:
+`"a".$b."c"`, never `"a" . $b . "c"`, matching the house style across the owner's other projects.
+
+Only that rule is carried across. Indentation stays at `@Symfony`'s four spaces rather than
+Litmind's tabs, so the rest of the tooling works unconfigured. Enforced in CI, not only locally.
+
+Config in [[naming#Coding standard]].
+
+---
+
 ## Open
 
 ### Confirmations required
 
 Listed in [[verifactu#Open questions to confirm with the AEAT]]. The deadline is now answered
 (1 July 2027); what remains is the submission-ordering question and the tax-case mapping.
-
-### Coding standard
-
-`@Symfony` via php-cs-fixer is the low-friction default for a greenfield Symfony project and is what
-[[naming#Case conventions]] assumes. Note it differs from the owner's Litmind house style, which
-uses tabs and no spaces around string concatenation dots. Easy to switch either way, but pick before
-the first thousand lines rather than after.
 
 ### Rectificativa type mapping
 

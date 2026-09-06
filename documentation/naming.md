@@ -94,6 +94,34 @@ Standard Symfony and Doctrine, so the tooling agrees with the code without confi
 - `snake_case` database tables and columns, through Doctrine's default naming strategy.
 - `SCREAMING_SNAKE_CASE` environment variables.
 
+## Coding standard
+
+**php-cs-fixer with the `@Symfony` ruleset, with one override: no spaces around string
+concatenation dots** (owner, 2026-09-06). `"a".$b."c"`, never `"a" . $b . "c"`, matching the house
+style across the owner's other projects.
+
+`@Symfony` sets `concat_space` to `one`, so it has to be overridden explicitly:
+
+```php
+// .php-cs-fixer.dist.php
+return (new PhpCsFixer\Config())
+    ->setRules([
+        '@Symfony' => true,
+        'concat_space' => ['spacing' => 'none'],
+    ])
+    ->setFinder(
+        PhpCsFixer\Finder::create()
+            ->in(__DIR__.'/src')
+            ->in(__DIR__.'/tests')
+    );
+```
+
+Everything else stays as `@Symfony` defines it, including **four-space indentation**. That differs
+from the tabs used in Litmind, and it is deliberate: only the concatenation rule was carried across,
+so the rest of the tooling ecosystem works without configuration.
+
+Run it in CI as a check, not only as a local convenience, or it stops being a standard.
+
 ## Related
 
 - [[corrections]] for what the R codes mean
