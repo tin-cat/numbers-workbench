@@ -12,7 +12,10 @@ thinking behind it.
 
 ## Index
 
-Read in this order the first time:
+New to the vocabulary? Start with the [[documentation/glossary|Glossary]]: SIF, VERI\*FACTU, RF,
+huella, rectificativa, IRPF and the rest, in plain terms.
+
+Then read in this order:
 
 1. [[documentation/architecture|Architecture]], the shape of the system and why it is that shape.
 2. [[documentation/verifactu|Verifactu]], the regulatory contract the whole design serves.

@@ -110,10 +110,13 @@ The same applies to the source applications, which is why that is an API concern
 
 ## Versions
 
-Pin the current stable Symfony at scaffold time and check what that is rather than assuming. Symfony
-majors land every two years in November, with the last minor of each cycle being the LTS, so the
-choice is between the current major and the previous LTS. For a system with this lifespan, **the
-LTS** is the better default.
+**The most modern stable Symfony** (owner, 2026-09-06), not the previous LTS. Check what that
+actually is at scaffold time rather than assuming; Symfony majors land every two years in November.
+
+The tradeoff being accepted, so it is not a surprise later: a standard-release major has a shorter
+support window than an LTS, so this buys current features and costs a more frequent upgrade cadence.
+On a system expected to run for many years that is a real commitment to keeping up, rather than a
+one-time choice.
 
 ## Related
 

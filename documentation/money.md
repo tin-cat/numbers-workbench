@@ -57,13 +57,15 @@ cannot be treated as a future feature.
 
 `Currency` is a closed set, so adding a third later is a data change rather than a design change.
 
-### The tax figures must also exist in euros
+### Tax figures stay in the invoice's own currency
 
-An invoice may be denominated in any currency, but the VAT amount has to be expressed in euros.
-**CONFIRM** the exact wording with the gestor, but plan for it: a USD invoice carries its amounts in
-USD *and* its tax figures in EUR.
+**Decided (owner, 2026-09-06).** A USD invoice carries its taxable base, tax and total in USD. There
+is no second set of figures in EUR.
 
-So the record holds both, plus the rate that connects them.
+**And the exchange rate to EUR at the time of the invoice is stored on the invoice itself**, which
+is what makes this decision safe: if the gestor or the AEAT turns out to require a euro figure
+somewhere, it is derivable exactly, from a rate captured at the right moment rather than looked up
+afterwards. The decision costs nothing and forecloses nothing.
 
 ### The exchange rate is part of the fiscal record
 
@@ -122,8 +124,8 @@ Rounding happens in exactly two places, and nowhere else:
 1. When a tax figure is computed from a base and a rate.
 2. When an invoice total is composed.
 
-Both use one stated mode (half up is the Spanish convention for VAT; **CONFIRM** with the gestor)
-and both are explicit calls, never a side effect of storage or display.
+Both use **half up** (round half away from zero), the ordinary convention for VAT in Spain (owner,
+2026-09-06). Both are explicit calls, never a side effect of storage or display.
 
 ## The invariant that catches everything
 

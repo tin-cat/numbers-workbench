@@ -62,6 +62,23 @@ in the state machine. See [[architecture#Submission never blocks issuance]].
 
 ## Preventing it at the bottom
 
+### Two different duplicates, and only one of them is caught for us
+
+Worth separating, because they fail in opposite ways:
+
+| | **Same code** | **Same sale** |
+|---|---|---|
+| What it is | Two invoices sharing a serie and número | Two invoices, each with its own valid number, for one transaction |
+| In our data | **8 invoices**, from the numbering race. See [[source-data-findings#Duplicate codes]] | **88 invoices**, the January 2026 PayPal incident |
+| What the AEAT does | **Rejects** it: "Registro de facturación duplicado" | **Accepts** both, happily. Each has a distinct identity, so nothing looks wrong |
+| Who has to catch it | The AEAT will, eventually and noisily | **Only we can** |
+
+The second is the worse problem. A same-code duplicate is loud: the submission fails and someone
+investigates. A same-sale duplicate is silent, lands cleanly in the chain, and becomes a customer
+charged once and invoiced twice, correctable only by issuing further records.
+
+### The mechanics of the first
+
 The AEAT identifies a record by **`Emisor` + `SerieYNúmeroFactura` + `FechaExpedición`**. Submitting
 a second record with the same identity returns **"Registro de facturación duplicado"**, and the FAQ
 is explicit that a number **cannot be reused even after an annulment**:
@@ -73,8 +90,9 @@ is explicit that a number **cannot be reused even after an annulment**:
 This is exactly what Litmind's `select max(number)+1` race produces, and it has already fired eight
 times in production. See [[source-data-findings#Duplicate codes]].
 
-So duplicate prevention is not a validation rule bolted on at the API. It is structural, at three
-levels:
+### Three structural defences
+
+Duplicate prevention is not a validation rule bolted on at the API. It is structural:
 
 1. **Numbering is serialised**, by a locking read on the chain head, so two concurrent issuances
    cannot claim the same number. See
@@ -85,7 +103,10 @@ levels:
    issuing a second one. This is what would have prevented the January 2026 incident: the PayPal
    retries carried the same payment. See [[api-contract#Idempotency]].
 
-The first two make duplicates impossible. The third makes them unnecessary.
+**The first two close the same-code case. Only the third closes the same-sale case**, which is why
+it is not optional and why the caller's key has to be something that identifies the *transaction*
+rather than the request. For the SaaS sources that is the payment processor's charge id, which is
+stable across every retry.
 
 ## `TipoFactura`: the legal grounds for the correction
 

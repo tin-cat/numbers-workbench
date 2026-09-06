@@ -65,35 +65,104 @@ Plus one province-level override, and it is the interesting one:
 The Canary Islands sit outside the EU VAT area, so a Canary business is not charged Spanish IVA.
 IRPF is not overridden there, so it falls through to Spain's voluntary setting.
 
-## Mapping onto Verifactu
+## IRPF is not in the record at all
 
-Here is the part that still needs the gestor, and it is now a small concrete table rather than an
-open question.
+**Answered from the AEAT developer FAQ, section 20.** This confirms the owner's instinct that the
+existing systems already answer the withholding question, but it has a consequence worth
+understanding.
 
-The existing system produces **percentages**. Verifactu needs **classification codes**
-(`CalificacionOperacion`, `OperacionExenta`, `ClaveRegimen`). A 0% line can be several fiscally
-distinct things: not subject by localisation rules, exempt, reverse charge, or an export. **The
-existing data does not distinguish them**, because it only ever stored the resulting percentage.
+> En conclusión la retención a cuenta del IRPF o IS que vaya en factura, **no se incluirá en el
+> registro de facturación**, ya que no es uno de los elementos constitutivos de la factura de
+> acuerdo con la Directiva UE y el art 6 del Reglamento de Obligaciones de Facturación.
 
-So the mapping has to be made once, per group:
+IRPF appears on the printed invoice and nowhere in the Verifactu record. The record covers the
+indirect tax (IVA, or IGIC, or IPSI) and nothing else.
 
-| Case | Percentage today | Verifactu code |
-|---|---|---|
-| Spain, any customer | 21% | to confirm, expected "sujeta y no exenta" |
-| Europe, consumer | 21% | to confirm |
-| Europe, business | 0% | to confirm: reverse charge, or not subject by localisation? |
-| Rest of world, any | 0% | to confirm: not subject, or export? |
-| Canary Islands, business | 0% | to confirm, and see the note below |
-| Canary Islands, consumer | 21% | to confirm |
-| IRPF 15% | withholding | how it is expressed in the record |
+### The consequence: two different totals
 
-**Six rows and one withholding question.** That is the whole of the largest remaining piece of work,
-and it is a conversation with the gestor rather than a research project.
+The record's `ImporteTotal` is defined as the sum of taxable base plus tax charged:
 
-For the Canary Islands specifically, the AEAT developer FAQ has a dedicated section (23, "Desglose
-del registro de facturación de alta cuando se trata de entregas de bienes o prestaciones de
-servicios localizadas en Canarias") covering IGIC rather than IVA. Read it before that
-conversation.
+> ImporteTotal - Se validará que sea igual a Ʃ (BaseImponibleOimporteNoSujeto + CuotaRepercutida +
+> CuotaRecargoEquivalencia) de todas las líneas de detalle de desglose
+
+**It does not subtract the withholding.** So for any invoice carrying IRPF:
+
+| | |
+|---|---|
+| **Total factura** (`ImporteTotal`, and what the QR carries) | base + VAT |
+| **Total a pagar** (what the customer actually pays) | base + VAT − withholding |
+
+Litmind's `invoices.total` column holds the **second** of these. It is what was charged. It is
+**not** the Verifactu `ImporteTotal`, and mapping it straight across would be wrong.
+
+**Scale of it:** 190 of Litmind's 58,807 invoices carry IRPF, 317.54 EUR of withholding in total,
+across 25 customers who have elected it. Small, ongoing, and exactly the kind of thing that produces
+a handful of unexplainable records years later if it is got wrong now.
+
+### The invoice PDF must show both
+
+The AEAT recommends it explicitly, because a customer who scans the QR will otherwise see a number
+that does not match what they paid:
+
+> el sistema informático de facturación (SIF) podría incluir en la factura ambos importes, "Importe
+> total factura" (que es el que aparece en el QR tributario) y "Total a pagar", debidamente
+> diferenciados
+
+So the PDF template needs two clearly labelled lines, not one. This is a concrete requirement on the
+renderer that Litmind's current template does not have.
+
+There is a **±10.00 EUR tolerance** on the `ImporteTotal` validation, returning a warning rather
+than a rejection, and it does not apply for `ClaveRegimen` 03, 05, 06 or 09.
+
+## Mapping onto Verifactu: the six rows
+
+This is the part that still needs the gestor. It is one table, not a research project.
+
+### Why a percentage is not enough
+
+The existing system stores a **percentage**. Verifactu wants a **classification**, and 21% or 0% does
+not determine it. Three fields carry the classification:
+
+**`CalificacionOperacion`** answers: is this operation subject to VAT, and if so, who accounts for
+it? The distinctions it draws are between an operation that is subject and not exempt with the
+issuer charging the tax; one that is subject but where **the recipient** accounts for it (reverse
+charge, *inversión del sujeto pasivo*); and one that is **not subject** at all, either by an article
+of the law or because the place-of-supply rules put it outside Spanish VAT.
+
+**`OperacionExenta`** applies when an operation is subject but **exempt**, and says on what grounds:
+an ordinary exemption, an export, an intra-EU supply, and so on. It is used *instead of* charging
+tax, not alongside.
+
+**`ClaveRegimen`** says which VAT regime the operation falls under: the general regime, or one of
+the special ones (cash basis, travel agencies, used goods, OSS/IOSS, and others).
+
+**A 0% line in our data could be any of: not subject by localisation, exempt as an export, or
+reverse charge.** Those are three different records with three different codes, and the current
+database cannot tell them apart because it only ever stored the zero. That is why this needs
+answering per group rather than deriving.
+
+### The six rows
+
+| # | Case | Today | The question |
+|---|---|---|---|
+| 1 | **Spain**, any customer | 21% | Expected the plainest case: subject, not exempt, general regime, issuer charges the tax. Confirm. |
+| 2 | **Europe**, consumer | 21% | We charge Spanish VAT to an EU consumer. Confirm this is the same classification as row 1, and whether OSS applies to these at our volume. |
+| 3 | **Europe**, business | 0% | The important one. Is this **reverse charge** (subject, recipient accounts) or **not subject by place-of-supply rules**? Different codes, and the answer probably depends on whether the customer's VAT number was validated. |
+| 4 | **Rest of world**, any customer | 0% | **Not subject by localisation**, or an **exempt export**? |
+| 5 | **Canary Islands**, business | 0% | The islands are outside the EU VAT area, so IGIC territory rather than IVA. Read FAQ section 23 ("Desglose del registro de facturación de alta cuando se trata de entregas de bienes o prestaciones de servicios localizadas en Canarias") before this one. |
+| 6 | **Canary Islands**, consumer | 21% | We currently charge Spanish VAT to a Canary consumer. Given row 5, this is the row most worth sanity-checking rather than just classifying. |
+
+### Where to read the actual code values
+
+The permitted values are in the AEAT's record design spreadsheet, "Diseños de registro de
+facturación", linked from
+`sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu/informacion-tecnica/disenos-registro.html`.
+**Read the codes from there rather than from memory or from a summary**, including this one: they
+are a compliance surface and they are versioned.
+
+Row 3 also raises a question the current system does not ask: **do we validate EU VAT numbers?**
+Reverse charge normally requires a valid one. Today `customer_dni_nif_cif` is free text and defaults
+to an empty string. See [[migration#Things that will surface]].
 
 ## Two defects to fix rather than port
 

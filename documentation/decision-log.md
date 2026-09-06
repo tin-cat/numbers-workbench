@@ -537,48 +537,106 @@ Full detail in [[tax-determination]].
 
 ---
 
+## 34. Foreign currency: figures stay in the invoice's currency, the rate is stored
+
+**Decided (owner, 2026-09-06).** A USD invoice carries its base, tax and total in USD. No second set
+of figures in EUR.
+
+**The exchange rate to EUR at the time of the invoice is stored on the invoice**, which is what
+makes this safe: if a euro figure turns out to be needed anywhere, it is derivable exactly from a
+rate captured at the right moment. The decision forecloses nothing.
+
+Rounding is **half up**, the ordinary Spanish VAT convention.
+
+See [[money]].
+
+---
+
+## 35. IRPF is not part of the billing record, and that means two totals
+
+**Answered 2026-09-06** from AEAT developer FAQ section 20, confirming the owner's expectation that
+the existing systems already settle this, with a consequence that they do not.
+
+> la retención a cuenta del IRPF o IS que vaya en factura, no se incluirá en el registro de
+> facturación
+
+`ImporteTotal` is base plus tax and **does not subtract the withholding**. So an invoice carrying
+IRPF has two different totals: **Total factura** (base + VAT, what the record and the QR carry) and
+**Total a pagar** (base + VAT − withholding, what the customer pays).
+
+**Litmind's `invoices.total` holds the second one.** Mapping it straight into `ImporteTotal` would
+be wrong. This affects 190 invoices, 317.54 EUR of withholding, 25 customers, and it is ongoing.
+
+The AEAT recommends the invoice show **both, clearly labelled**, since a customer scanning the QR
+will otherwise see a figure that does not match what they paid. Litmind's current PDF template shows
+one. See [[tax-determination#The consequence: two different totals]].
+
+---
+
+## 36. Argon2id parameters and the Symfony version
+
+**Decided (owner, 2026-09-06).** Argon2id at **m = 19456 KiB, t = 2, p = 1**, the OWASP starting
+point, with `migrate_from` so raising them later costs nothing.
+
+Symfony: **the most modern stable release**, not the previous LTS. The tradeoff accepted with it is
+a shorter support window and therefore a more frequent upgrade cadence, which on a system with this
+lifespan is a commitment to keeping up rather than a one-time choice.
+
+---
+
+## 37. The two kinds of duplicate are different problems
+
+**Clarified 2026-09-06**, prompted by the owner asking which was meant.
+
+**Same code**, two invoices sharing a serie and número: 8 in Litmind's data, from the numbering
+race. The AEAT **rejects** these outright as "Registro de facturación duplicado", so they fail
+loudly.
+
+**Same sale**, two validly-numbered invoices for one transaction: the 88 from January 2026. The AEAT
+**accepts both**, because each has a distinct identity and nothing looks wrong. This is the worse
+one, because only we can catch it and it lands silently in the chain.
+
+The serialised numbering and the unique constraint close the first. **Only idempotency closes the
+second**, which is why the caller's key must identify the *transaction* rather than the request: the
+payment processor's charge id, stable across every retry.
+
+See [[corrections#Two different duplicates, and only one of them is caught for us]].
+
+---
+
 ## Open
 
-Everything answerable from the AEAT's own documentation has been answered, including the deadline
-and the submission-order question. See
-[[verifactu#Answered from the AEAT's own documentation]]. What is left falls into three groups.
+Everything answerable from the AEAT's own documentation has been answered. What is left is one
+conversation and one lookup.
 
 ### 1. For the gestor, in one conversation
 
-Six questions, all concrete enough to answer in a single sitting.
+**The six classification rows** in [[tax-determination#The six rows]]. The existing system stores a
+percentage, and a 0% line could be not-subject by localisation, exempt as an export, or reverse
+charge. Those are three different records and the data cannot tell them apart, so the mapping has to
+be stated once per group. Rows 3 (EU business) and 5 (Canary Islands) are the substantive ones; row
+6 is worth sanity-checking rather than merely classifying.
 
-**Corrections:**
+**The rectificativa type mapping.** Expected narrow: R1 for essentially everything (Art. 80.Uno
+LIVA), R4 for corrections of customer data, R2 and R3 out of scope, and `I` por diferencias for
+every refund. See [[corrections]].
 
-1. **The rectificativa type mapping.** Expected answer is narrow: **R1 for essentially everything**
-   (Art. 80.Uno LIVA), R4 for corrections of customer data, R2 and R3 out of scope. Plus **`I`, por
-   diferencias, for every refund**. See [[corrections]].
-2. **Whether a duplicate invoice that was delivered to the customer** is annulled or rectified. The
-   operation was never real, which points to annulment; delivery points the other way. See
-   [[corrections#The test for annulment is whether the operation was real]].
+**Whether a duplicate invoice that was delivered** is annulled or rectified. The operation was never
+real, which points to annulment; delivery points the other way. See
+[[corrections#The test for annulment is whether the operation was real]].
 
-**Tax classification:**
+**Whether we should be validating EU VAT numbers.** Raised by row 3: reverse charge normally
+requires a valid one, and `customer_dni_nif_cif` is free text today, defaulting to an empty string.
 
-3. **The six classification-code rows** in [[tax-determination#Mapping onto Verifactu]], plus how
-   IRPF withholding is expressed in the record. Read FAQ section 23 on Canarias first.
+### 2. To read, not to ask
 
-**Foreign currency**, which is 111 invoices and rising:
+**The permitted code values** for `CalificacionOperacion`, `OperacionExenta` and `ClaveRegimen`, from
+the AEAT's "Diseños de registro de facturación" spreadsheet linked at
+`sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu/informacion-tecnica/disenos-registro.html`.
+Read them from the source rather than from memory or a summary: they are a compliance surface and
+they are versioned.
 
-4. **Must the tax figures be expressed in euros on a USD invoice?** Planned for either way, but it
-   decides whether the EUR conversion is mandatory or merely useful. See
-   [[money#The tax figures must also exist in euros]].
-5. **Which exchange rate applies**, and on which date. Expected: the Banco de España or ECB
-   reference rate on the fecha de devengo. This is stored permanently on the record, so it has to be
-   right the first time. See [[money#The exchange rate is part of the fiscal record]].
-6. **The rounding mode** for VAT computation. Expected: half up. See [[money#Rounding]].
+### 3. Not blocking, possibly never needed
 
-### 2. Technical, at the moment the code is written
-
-- **Argon2id parameters** against the OWASP guidance current at build time. The recorded m=19456,
-  t=2, p=1 is a starting point and these numbers move. See [[access-control]].
-- **The Symfony version.** The current major against the previous LTS; prefer the LTS for a system
-  with this lifespan. See [[interface#Versions]].
-
-### 3. Not blocking, and possibly never needed
-
-- **Whether one obligado may run several SIFs**, each with its own chain. This was load-bearing
-  under the rejected multi-SIF design and is now merely interesting. See [[verifactu]].
+**Whether one obligado may run several SIFs**, each with its own chain. Load-bearing under the
+rejected multi-SIF design, now merely interesting. See [[verifactu]].

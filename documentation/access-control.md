@@ -25,9 +25,10 @@ It is memory-hard, so specialised hardware buys an attacker far less.
 
 - PHP supports it natively: `password_hash($p, PASSWORD_ARGON2ID)`, given a build with argon2
   support. Symfony's `auto` hasher selects it when available.
-- Parameters as a starting point, from the OWASP Password Storage guidance: **m = 19456 KiB (19
-  MiB), t = 2, p = 1**. **CONFIRM** against current OWASP guidance when the code is written; these
-  numbers move.
+- Parameters **m = 19456 KiB (19 MiB), t = 2, p = 1** (owner, 2026-09-06), from the OWASP Password
+  Storage guidance. Worth a glance at current OWASP guidance when the code is written, since these
+  numbers move, but this is the decided starting point and `migrate_from` makes raising them later
+  cost nothing.
 - Configure `migrate_from` and rehash on successful login, so raising the parameters later upgrades
   every account as people sign in rather than needing a reset.
 
