@@ -33,9 +33,9 @@ From `app/export.php` in old Numbers, using PhpSpreadsheet. This is the specific
 | Col | Header | Content |
 |---|---|---|
 | A | Fecha | |
-| B | Código factura | supplier's invoice code |
-| C | Proveedor | supplier name |
-| D | CIF | supplier fiscal id |
+| B | Código factura | the provider's invoice code |
+| C | Proveedor | provider name |
+| D | CIF | provider fiscal id |
 | E | Concepto | description |
 | F | Base | deductible portion only |
 | G | IVA | deductible portion only |

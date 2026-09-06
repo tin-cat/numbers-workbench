@@ -40,12 +40,20 @@ them all in one pass.
   do not stop happening because a deadline passed. See [[corrections]].
 - **The gestor export**, reproducing the existing workbook exactly, with its golden-file test. The
   accounts still have to reach Victor. See [[gestor-export]].
+- **Login, two-factor, the permission model and the screens the manual invoice flow needs.** Not the
+  whole back office, but enough of it: nobody can issue a manual invoice without an interface to do
+  it in. Recovery codes and the break-glass command ship with the second factor, not after it. See
+  [[access-control]] and [[interface]].
 - Backups with PITR, and one rehearsed restore.
 
 ## Can land afterwards without compliance risk
 
 - The other SaaS applications, one at a time.
 - The invoice admin, moved across from Litmind.
+- The rest of the back office: expenses, providers, the audit log viewer, user management screens
+  beyond what the first admin needs.
+- **The dashboard.** It is the home page, but nothing fiscal depends on it and it is the easiest
+  thing to build well once the aggregates have real data behind them. See [[dashboard]].
 - **The retention executor.** This is worth stating plainly: the clock is five fiscal exercises, so
   the first invoice actually due for anonymization is years away. Build the **signal receiver** from
   day one, because cancellation and erasure dates are cheap to record and lossy to reconstruct

@@ -266,6 +266,140 @@ at read time, so the assumption lives in the data with a decision behind it.
 
 ---
 
+## 19. Argon2id for password storage, not PBKDF2
+
+**Decided.** PBKDF2 is the FIPS-compliance answer, not the best-available one: it is cheap to
+accelerate on GPUs. Argon2id is memory-hard, is OWASP's first recommendation, and PHP supports it
+natively.
+
+Starting parameters m = 19456 KiB, t = 2, p = 1, with `migrate_from` configured so raising them
+later rehashes accounts on login rather than needing a reset. Fallback order if a host ever lacks
+argon2: scrypt, then bcrypt.
+
+Alongside it: login throttling, CSRF on every form (which Litmind's admin lacks and this must not
+repeat), and no self-service password reset to start with. The second factor is decision 22.
+
+Full detail in [[access-control]].
+
+---
+
+## 20. Named permissions, with `admin` implying all
+
+**Decided.** No role hierarchy: with a handful of users it hides who can do what. Users hold named
+capabilities; `admin` short-circuits in the voter rather than being stored as the full set, so a
+permission added in 2028 is automatically held by admins.
+
+**loren@tin.cat holds `admin`.** The first admin is created by an interactive console command at
+deployment, never by a seeded password.
+
+Two invariants that make `users` safe enough to grant: **a user cannot grant a permission they do
+not hold** (without which `users` is silently equivalent to `admin`), and **the last admin cannot be
+removed**, enforced in the domain rather than the form.
+
+And the part that matters most: **no permission deletes an invoice, edits a chained record, changes
+a series number or suppresses a submission.** The permission system controls access, never the
+immutability guarantees. An "admin can force it" escape hatch would become the thing that breaks the
+chain.
+
+Full detail in [[access-control#The permission model]].
+
+---
+
+## 21. Server-rendered Twig with Symfony UX, Bootstrap 5 and Tabler
+
+**Decided.** The interface is forms, tables and a few workflows, which is what server-rendered HTML
+is best at. Turbo gives near-SPA navigation, Stimulus covers the interactive sprinkles, Tabler
+supplies the sidebar, tables, tabs and form components already assembled.
+
+**Rejected: a React or Vue SPA.** It would require exposing the whole domain through a second API
+surface purely so the interface can draw a table, doubling the attack surface of a system whose job
+is being trustworthy. The existing API is deliberately narrow, machine-facing and
+per-source-credentialed.
+
+**Rejected: Tailwind**, which ships no components, so an admin panel means building the whole chrome
+by hand.
+
+**Rejected: EasyAdmin**, on fit rather than quality. Issuance, annulment, partial rectification,
+submission retry and the gestor export are workflows with domain rules, not entity forms, and
+EasyAdmin becomes an obstacle once the screens stop being CRUD.
+
+Assets through AssetMapper, so there is no Node toolchain in the container image.
+
+Full detail in [[interface]].
+
+---
+
+## 22. SMS second factor via Twilio Verify, required for every user
+
+**Decided.** Reusing the arrangement Litmind already runs: one Twilio account, one Verify service
+per product so the friendly name in the message reads as Numbers. Verify rather than plain SMS,
+because it needs no purchased sender number and no 10DLC registration.
+
+**Stated once and then built as asked:** SMS is the weakest of the common second factors, and NIST
+deprecated it as an out-of-band authenticator over SIM swap and SS7. It is the pragmatic choice here
+because the integration exists and works. Recommendation, not a blocker: allow TOTP as an
+*alternative* for anyone who wants it, which Twilio Verify also supports.
+
+**Recovery is not optional.** There is one admin; a lost phone or a Twilio outage locks the fiscal
+records away from everyone. So: single-use recovery codes generated at enrolment and stored hashed,
+plus a break-glass console command that clears a second factor, audit logged.
+
+Phone numbers are set at enrolment and are **never written into this repository**. A 2FA phone is an
+authentication factor, and an authentication factor in git history is permanent.
+
+Full detail in [[access-control#Two-factor authentication]].
+
+---
+
+## 23. Cloudflare Turnstile on every form, login included
+
+**Decided.** Two things settled in advance because they are what causes trouble: the CSP must
+explicitly allow `challenges.cloudflare.com` for both script and frame, and the behaviour when
+Cloudflare's verification call fails must be configured rather than accidental.
+
+Recommended split, **to confirm**: fail closed on login and anything reachable without a session,
+where the control earns its place against credential stuffing; fail open with an alert on forms
+inside the authenticated area, where the session and the CSRF token are the real controls and a
+Cloudflare incident must not stop the accounts.
+
+Full detail in [[access-control#Turnstile]].
+
+---
+
+## 24. A statistics dashboard as the home page
+
+**Decided.** Panels of current position, yearly trends and period-over-period comparisons, gated on
+`statistics.view`. Users without it land on their first permitted section rather than an empty page.
+Charts with ApexCharts, which is what Tabler is built around.
+
+The design content is in the traps, all specific to this data: **rectificativas must net rather than
+add**, **currencies cannot be summed** so aggregates convert at each invoice's own stored rate,
+**partial periods must compare the same day range** or seasonality reads as a trend, **money must
+not become a JSON number** on the way to a chart, and aggregates happen in SQL rather than through
+the ORM.
+
+Reassuringly, retention does not break any of it: minimization strips identity, not amounts, so
+fifteen years of trends stay correct.
+
+Full detail in [[dashboard]].
+
+---
+
+## 25. Expense editing follows `expenses.add`, and suppliers become providers
+
+**Decided (owner, 2026-09-06).** Two small ones settled together.
+
+`expenses.add` covers **editing and deleting the entries a user created themselves**; amending
+someone else's requires `admin`. So an expense records who entered it, and that field is what the
+voter reads. This does not touch invoice immutability: an expense is a bookkeeping entry about
+someone else's invoice, not a fiscal document we issued.
+
+**Providers, not suppliers**, everywhere: interface, domain, database and API. Old Numbers' 109-row
+`suppliers` table is renamed during the migration, along with the expense foreign key that points at
+it, so the old term survives nowhere.
+
+---
+
 ## Open
 
 ### Confirmations required
@@ -287,6 +421,11 @@ as the EUR ones, changing only the cell's number format. A column sum therefore 
 euros. With 111 USD invoices totalling 1,853.20 this is small, but it is either something Victor
 handles by hand or something nobody has noticed. Ask before changing anything: it touches the format
 contract. See [[gestor-export#An open question for Victor]].
+
+### Turnstile failure behaviour
+
+Fail closed everywhere, or the split recommended in decision 23. See
+[[access-control#Turnstile]].
 
 ### Rectificativa type mapping
 
