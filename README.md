@@ -31,6 +31,8 @@ The rest:
 - [[documentation/interface|The web interface]], the framework choices and the layout.
 - [[documentation/dashboard|The dashboard]], the statistics home page and the traps in it.
 - [[documentation/naming|Naming]], English everywhere, and the three boundaries where it is not.
+- [[documentation/tax-determination|Tax determination]], the IVA and IRPF rules ported from Litmind,
+  and the six-row mapping still owed to the gestor.
 - [[documentation/data-retention|Data retention]], who owns the clock and what signals cross.
 - [[documentation/migration|Migration]], the three migrations, reconciliation and cutover.
 - [[documentation/source-data-findings|Findings in the existing data]], measured, and what the

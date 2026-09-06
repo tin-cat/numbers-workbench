@@ -4,37 +4,88 @@ How an invoice is corrected once it exists. Decided 2026-09-06.
 
 Nothing is ever edited and nothing is ever deleted. Every correction is a new record.
 
-## Two different mechanisms, and the line between them is not where you would guess
+## Five cases, from the AEAT's own developer FAQ
 
-Verifactu has two kinds of record, and the distinction is **about the record, not about the
-invoice**:
+Section 17 of the AEAT developer FAQ ("Forma de proceder ante errores cometidos al facturar",
+version 1.3, 4 December 2025) sets this out directly. It supersedes both earlier framings in this
+document, which were each wrong in a different direction.
 
-| | `RegistroFacturacionAlta` | `RegistroFacturacionAnulacion` |
+| # | When | What to do |
 |---|---|---|
-| What it is | A new invoice record. Includes ordinary invoices *and* rectificativas | Withdraws a record previously sent to the AEAT |
-| Used when | An invoice exists and is being issued or corrected | A **record** was sent that should not have been: sent twice, or sent for an invoice that was never actually issued |
-| Is it about money? | Yes, it is an invoice | No. It says nothing about the commercial reality, only that a record was wrong |
+| 1 | Error found **before** the invoice is issued, while still editing | Just fix it. No record exists yet. |
+| 2a | Error found after issuance, of a kind the **ROF** covers (amounts, content, anything on the printed invoice) | **A rectificativa.** A new invoice of type R1 to R5. |
+| 2b | Error found after issuance in **internal record fields** that do not appear on the invoice, such as a tax classification code | **An `alta de subsanación`**: correct the original and generate a new alta record carrying the corrected data. "Should be very infrequent." |
+| 2c | Error affects neither the ROF nor any record field | Fix the invoice. No new record of any kind. |
+| 2d | The whole invoice **should never have existed**, and the ROF does not require a rectificativa | **An `RF de anulación`** (art. 11 RRSIF). "Should be very infrequent." |
 
-**The practical rule:**
+### The test for annulment is whether the operation was real
 
-- **The invoice reached the customer and now needs undoing** (a refund, a cancelled sale, an invoice
-  issued in error that the customer already has) → **a rectificativa**. You cannot make a document
-  someone is holding disappear.
-- **Only the record was wrong** (a bug submitted it twice, or submitted one for an invoice that was
-  never issued) → **an anulación**.
+The FAQ is unambiguous:
 
-An earlier version of this document said an invoice issued in error takes an anulación. That is too
-loose and would have produced the wrong flow. Once an invoice has been delivered, correcting it is a
-rectificativa regardless of how wrong it was.
+> Con carácter general, todas las facturas emitidas, en la medida en que respondan a operaciones
+> realmente efectuadas (como es el caso habitual) **no pueden anularse**.
 
-So the January 2026 Litmind incident splits by whether the duplicate invoices actually reached
-customers. Those that were emailed need rectificativas; any that never left the system would be the
-anulación case, had a record been sent. **CONFIRM the exact boundary with the gestor**, because it
-turns on whether a document was issued in the legal sense, not on whether a row was written.
+Annulment applies "cuando se haya emitido erróneamente una factura", and the example given is an
+invoice for a service or delivery **that does not exist and was never performed**. Test invoices and
+training invoices are the cited cases.
 
-> The AEAT field names below are **the wire format**, used only inside the submission adapter. Our
-> domain calls these things `CorrectionReason` and `CorrectionMethod`, in English, like everything
-> else. See [[naming]].
+So the criterion is **the reality of the operation**, not whether money moved and not whether the
+document was delivered. A refund of a real sale can never be an annulment, however completely the
+money went back.
+
+Delivery is a **secondary** consideration, and the FAQ says so: if the faulty invoice was **not**
+delivered to the customer, that supports treating it as a failed issuance and annulling it, then
+issuing a fresh correct original rather than a rectificativa.
+
+Both mechanisms are described as exceptional: "deben ser casos muy excepcionales, siempre a valorar
+y utilizar con prudencia."
+
+### Where that puts the January 2026 incident
+
+The PayPal IPN retried against a 500 and produced extra invoices for payments that happened once.
+Those extra invoices describe operations that were never performed, which is squarely the annulment
+case. Where one was delivered to the customer, the secondary consideration pulls the other way and
+it is worth asking the gestor.
+
+The design consequence matters more than the classification: **that situation must not be reachable
+again.** See [[#Preventing it at the bottom]].
+
+### `alta de subsanación` after an AEAT rejection
+
+A case the submission state machine has to handle. If the AEAT **rejects** a record, the record does
+not exist at the AEAT at all, and the correction is an alta de subsanación carrying
+`Subsanacion = "S"` and `RechazoPrevio = "X"`. If the record was **accepted with errors**, it stays
+at the AEAT with those errors forever and the correction is an ordinary alta de subsanación.
+
+So "rejected" and "accepted with errors" are not the same state and must not be collapsed into one
+in the state machine. See [[architecture#Submission never blocks issuance]].
+
+## Preventing it at the bottom
+
+The AEAT identifies a record by **`Emisor` + `SerieYNúmeroFactura` + `FechaExpedición`**. Submitting
+a second record with the same identity returns **"Registro de facturación duplicado"**, and the FAQ
+is explicit that a number **cannot be reused even after an annulment**:
+
+> El sistema VERI*FACTU no acepta estas operaciones porque, una vez que se comunica un registro de
+> anulación, cuando se intenta subir el subsiguiente registro de alta con el mismo número provoca un
+> error "Registro de facturación duplicado."
+
+This is exactly what Litmind's `select max(number)+1` race produces, and it has already fired eight
+times in production. See [[source-data-findings#Duplicate codes]].
+
+So duplicate prevention is not a validation rule bolted on at the API. It is structural, at three
+levels:
+
+1. **Numbering is serialised**, by a locking read on the chain head, so two concurrent issuances
+   cannot claim the same number. See
+   [[architecture#The chain is a strict single-writer structure]].
+2. **A unique constraint** on `(issuer, series, number)`, so the database refuses a duplicate even
+   if the application logic is wrong.
+3. **Idempotency on the caller's key**, so a retried request returns the original invoice instead of
+   issuing a second one. This is what would have prevented the January 2026 incident: the PayPal
+   retries carried the same payment. See [[api-contract#Idempotency]].
+
+The first two make duplicates impossible. The third makes them unnecessary.
 
 ## `TipoFactura`: the legal grounds for the correction
 

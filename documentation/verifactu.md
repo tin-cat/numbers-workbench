@@ -98,18 +98,71 @@ One namespace per NIF. Every source gets its own distinct series, allocated by N
 | Other SaaS apps | to allocate | One per app, must not collide |
 | Manual invoices | to allocate | Issued by Numbers v2 through its own creation flow. The existing codes are a year-prefixed sequence (`21001`), which the new series must continue |
 
-## Open questions to confirm with the AEAT
+## Answered from the AEAT's own documentation
+
+Researched 2026-09-06 against the AEAT developer FAQ ("Aclaraciones a dudas de los desarrolladores",
+version 1.3, 4 December 2025) at
+`sede.agenciatributaria.gob.es/static_files/AEAT_Desarrolladores/EEDD/IVA/VERI-FACTU/FAQs-Desarrolladores.pdf`.
+
+### The deadline, with its legal source
+
+**1 January 2027** for those filing Impuesto de Sociedades, **1 July 2027** for everyone else, which
+is us. The dates moved from 2026 by **Real Decreto-ley 15/2025 of 2 December**, which is what
+version 1.3 of the FAQ was published to reflect.
+
+The AEAT actively encourages adopting early: a compliant system may be used with full fiscal
+validity today, and they recommend it "para evitar apuros de tiempo y problemas de última hora".
+
+### Order: the requirement is on generation, not submission
+
+The obligation is that records are **generated** in the chronological order the invoices are issued:
+
+> basta con que el sistema SOLO admita la generación de los RFs por el orden cronológico en que se
+> encolen, o sea, que la generación de los RF se produzca por la misma secuencia cronológica de
+> facturación
+
+That is exactly the single-writer constraint in
+[[architecture#The chain is a strict single-writer structure]], now confirmed as a requirement
+rather than an inference.
+
+**Nothing found imposes an order on submission.** Queueing with retries is explicitly normal:
+
+> los RF quedarían "encolados", pendientes de remisión, con reintentos periódicos, como si se
+> tratara de una incidencia, sin que ello suponga ningún problema
+
+**Decision: keep per-chain FIFO on the outbox anyway.** At fifteen invoices a day it costs nothing,
+and it removes a question that would otherwise need re-asking every time the queue misbehaves.
+
+### Building VERI\*FACTU-only removes two obligations
+
+A significant and easily-missed scope reduction. A SIF that can **only** operate in VERI\*FACTU mode
+("SOLO VERI\*FACTU"), as opposed to a "DUAL" one that can also run in the non-submitting mode:
+
+- **Is not required to implement a registro de eventos.** The event log is obligatory only for
+  systems that can operate in "NO VERI\*FACTU" mode.
+- **Is not required to verify the previous record's chaining before generating each new one.** That
+  pre-flight check is "SIEMPRE OBLIGATORIA" only for "NO VERI\*FACTU".
+
+Both are worth doing anyway as cheap integrity checks, but they are ours to schedule rather than
+requirements to satisfy. **Build VERI\*FACTU-only, and do not add a non-submitting mode**, because
+adding one later drags both obligations in with it.
+
+### Record identity, and why a number can never be reused
+
+A record is identified by **`Emisor` + `SerieYNúmeroFactura` + `FechaExpedición`**. A second record
+with the same identity is rejected with **"Registro de facturación duplicado"**, and this holds even
+after an annulment: the old practice of deleting an invoice and reusing its number is explicitly
+dead.
+
+See [[corrections#Preventing it at the bottom]] for the three structural defences this implies.
+
+## Still open with the AEAT or the gestor
 
 - **CONFIRM** multiple SIFs per obligado, each with its own chain. Not load-bearing any more given
   the single-SIF decision, but worth knowing.
-- **CONFIRM** whether records must be *submitted* in chain order, or whether the AEAT accepts them
-  in any order and validates the chain later. If order is required, the outbox needs per-chain FIFO
-  rather than a plain queue.
-- ~~The deadline~~ **Answered: 1 July 2027**, the mandatory date for autónomos. See
-  [[roadmap#The schedule]]. This is also the date the rollback option expires, see
-  [[migration#Rollback]].
-- **CONFIRM** the mapping of our tax cases (Spanish B2C, Spanish B2B, EU reverse charge, non-EU) onto
-  `CalificacionOperacion`, `OperacionExenta` and `ClaveRegimen`.
+- **The Verifactu classification codes** for our tax cases. No longer open-ended: the existing rules
+  are documented in [[tax-determination]] and the mapping is now six rows and one withholding
+  question for the gestor.
 
 ## Related
 

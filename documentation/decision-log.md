@@ -454,25 +454,112 @@ Config in [[naming#Coding standard]].
 
 ---
 
+## 29. Build VERI\*FACTU-only, and never add a non-submitting mode
+
+**Decided 2026-09-06**, from the AEAT developer FAQ. A SIF that can only operate in VERI\*FACTU mode
+is **not required to implement a registro de eventos**, and is **not required to verify the previous
+record's chaining before generating each new one**. Both obligations attach only to systems that can
+also run in "NO VERI\*FACTU" mode.
+
+Both are cheap enough to do anyway as integrity checks, but as our choice rather than as
+requirements. The decision that matters is the negative one: **do not add a non-submitting mode
+later**, because it drags both obligations in with it.
+
+---
+
+## 30. Submission order: FIFO by choice, not by requirement
+
+**Answered 2026-09-06.** The regulation requires records to be **generated** in the chronological
+order the invoices are issued, which is the single-writer constraint already designed for. Nothing
+found imposes an order on **submission**, and the FAQ explicitly treats a queue with periodic
+retries as normal and unproblematic.
+
+Keep per-chain FIFO on the outbox regardless. At fifteen invoices a day it costs nothing and it
+retires the question permanently.
+
+---
+
+## 31. Duplicate prevention is structural, at three levels
+
+**Decided 2026-09-06**, prompted by the owner's instruction to prevent duplicate invoicing "from the
+very bottom of the system", and confirmed as necessary by the AEAT: a record is identified by
+`Emisor` + `SerieYNúmeroFactura` + `FechaExpedición`, a second one is rejected as "Registro de
+facturación duplicado", and **a number cannot be reused even after an annulment**.
+
+1. **Serialised numbering**, by a locking read on the chain head.
+2. **A unique constraint** on `(issuer, series, number)`, so the database refuses a duplicate even
+   when the application is wrong.
+3. **Idempotency on the caller's key**, so a retry returns the original invoice rather than issuing
+   a second one.
+
+The first two make duplicates impossible; the third makes them unnecessary. The third is the one
+that would have prevented the January 2026 incident.
+
+---
+
+## 32. Corrections have five cases, not two
+
+**Decided 2026-09-06**, from section 17 of the AEAT developer FAQ. This supersedes two earlier and
+differently wrong framings in [[corrections]].
+
+**The test for annulment is whether the operation was real**, not whether money moved and not
+whether the document was delivered: "todas las facturas emitidas, en la medida en que respondan a
+operaciones realmente efectuadas... no pueden anularse." Whether the invoice reached the customer is
+a secondary consideration that supports annulment when it did not.
+
+The fifth case is one we had missed entirely: **`alta de subsanación`**, for errors in internal
+record fields that never appear on the printed invoice, such as a tax classification code. Also the
+distinction between a record **rejected** by the AEAT (never exists there, correction carries
+`Subsanacion = "S"` and `RechazoPrevio = "X"`) and one **accepted with errors** (stays wrong there
+forever). Those two are different states and the submission state machine must not collapse them.
+
+---
+
+## 33. Tax determination is ported from Litmind, not invented
+
+**Decided (owner, 2026-09-06).** Litmind's existing IVA and IRPF rules have been in production for
+years and **have been checked by the gestor**. They are the specification.
+
+Three inputs: country, province, and whether the customer has provided invoicing data (which is the
+business-or-consumer test). Spain charges 21% to everyone with IRPF opt-in; 53 European countries
+charge consumers only; 173 others never; the seven Canary Island provinces override Spain because
+they sit outside the EU VAT area.
+
+What remains is only the **classification codes**, because the existing system stores a percentage
+and a 0% line can be not-subject, exempt, reverse charge or an export. That is now six rows and one
+withholding question for the gestor rather than an open research problem.
+
+Two defects to fix rather than port: the null-country `TypeError`, which becomes an explicit refusal
+to issue, and the `??` versus `?:` inconsistency between the two getters that would silently ignore
+a province setting IRPF to `0`.
+
+Full detail in [[tax-determination]].
+
+---
+
 ## Open
 
 ### Confirmations required
 
-Listed in [[verifactu#Open questions to confirm with the AEAT]]. The deadline is now answered
-(1 July 2027); what remains is the submission-ordering question and the tax-case mapping.
+The deadline (1 July 2027, by RDL 15/2025) and the submission-ordering question are both now
+answered from the AEAT's own documentation. See
+[[verifactu#Answered from the AEAT's own documentation]]. What remains is the gestor conversation
+above.
 
-### Rectificativa type mapping
+### For the gestor, in one conversation
 
-Still needs the gestor to sign off, but the expected answer is now narrow: **R1 for essentially
-everything we do** (Art. 80.Uno LIVA, the operation cancelled or the price altered), R4 for the
-occasional correction of customer data, and R2/R3 out of scope. Plus **`I`, por diferencias, for
-every refund**, partial and full. See [[corrections#TipoFactura: the legal grounds for the correction]].
+Three things, all now concrete:
 
-Also for the gestor: whether a duplicate invoice that reached the customer is rectified or annulled.
-See [[corrections#Two different mechanisms, and the line between them is not where you would guess]].
+1. **The rectificativa type mapping.** Expected answer is narrow: **R1 for essentially everything**
+   (Art. 80.Uno LIVA), R4 for corrections of customer data, R2 and R3 out of scope. Plus **`I`, por
+   diferencias, for every refund**. See [[corrections]].
+2. **The six classification-code rows** in [[tax-determination#Mapping onto Verifactu]], plus how
+   IRPF withholding is expressed in the record.
+3. **Whether a duplicate invoice that was delivered to the customer** is annulled or rectified. The
+   operation was never real, which points to annulment; delivery points the other way. See
+   [[corrections#The test for annulment is whether the operation was real]].
 
 ### Tax determination migration
 
-Lifting the country and province tax configuration out of each source application is the largest
-single piece of work and has not been scoped. See
-[[api-contract#Tax determination lives here]].
+Lifting the country and province tax configuration out of each source application. Now specified in
+[[tax-determination]]; what is left is the port itself and the gestor conversation above.
