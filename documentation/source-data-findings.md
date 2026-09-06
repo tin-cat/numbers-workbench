@@ -38,6 +38,40 @@ the whole history is 11.**
 This is what makes the strict single-writer chain constraint free rather than expensive. See
 [[architecture#The chain is a strict single-writer structure]].
 
+## The issuer has had ten identities
+
+`company_name`, `company_address` and `company_dni_nif_cif` are stored per invoice row, and across
+the history they take **ten distinct combinations**: two spellings of the name, five addresses, and
+four formats of the same tax id. Old Numbers holds none of this, so it is a field Litmind alone
+supplies to the migration, and a re-rendered historical PDF must show what was printed at the time.
+
+One of them is an error. **6,343 invoices between 2024-12-10 and 2026-01-25 carry the tax id as
+`ES J39898734`**, with the letter before the digits. It was printed on a year of invoices and is not
+correctable; it belongs in the exception list that accompanies the migration.
+
+Going forward, one canonical tax id (`39898734J`) for the records, with the historical display
+value preserved separately.
+
+## PayPal is live
+
+27,906 invoices carry no Stripe charge id. Most are history from before Stripe, but **459 since
+1 January 2025** have a `payment_id` and no charge: PayPal, at roughly ten percent of current
+invoicing. The design has to treat it as a first-class payment source. See
+[[review-2026-09-06#R3]].
+
+## Almost no invoice identifies its customer by tax id
+
+**54,964 of 58,807 invoices (93%) have an empty `customer_dni_nif_cif`**, and 53,199 of those go to
+customers resident in Spain. For history it is inert. For issuance it decides whether consumer
+invoices are complete (`F1`) or simplified (`F2`) invoices, which changes the record, the refund
+code and the PDF. See [[review-2026-09-06#R4]].
+
+## Timezone
+
+All Litmind timestamps are UTC; the fiscal date is Spanish local. Checked with timezone tables
+loaded: **no invoice in the history changes year** between the two, so the migration is safe. The
+rule still has to be explicit going forward.
+
 ## Currencies in use
 
 | Currency | Invoices | First | Last | Sum of totals |

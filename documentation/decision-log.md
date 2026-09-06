@@ -604,39 +604,71 @@ See [[corrections#Two different duplicates, and only one of them is caught for u
 
 ---
 
+## 38. Rehearsal is against the AEAT pre-production service, never a throwaway series
+
+**Decided 2026-09-06** after the review. The AEAT is explicit that a SIF operating against production
+cannot produce test invoices: anything it issues is real and must be annulled. So every phase before
+cutover, on the development machine and in production alike, submits to `prewww2.aeat.es`, and the
+rehearsal chain is wiped before the first real record. See [[review-2026-09-06#R1]] and
+[[implementation-plan]].
+
+---
+
+## 39. Litmind issues through a transactional outbox, and reconciles charges to invoices
+
+**Decided 2026-09-06.** The ServiceBus is documented as able to lose a published message silently.
+The `IssueInvoice` command is therefore written to an outbox table in the same transaction as the
+payment record and relayed from there, and a reconciliation job asserts every successful charge and
+PayPal transaction has exactly one invoice. See [[review-2026-09-06#R2]].
+
+---
+
+## 40. PayPal is a first-class payment source
+
+**Decided 2026-09-06.** 459 invoices since January 2025 are PayPal. Its transaction id is an
+idempotency key, its IPN is a trigger, and the reconciliation covers it. See
+[[review-2026-09-06#R3]].
+
+---
+
+## 41. Issuer identity is the fourth field Litmind supplies to the migration
+
+**Decided 2026-09-06.** Ten distinct issuer identities across the history, none in old Numbers.
+Stored as printed, with one canonical tax id for records going forward. See
+[[review-2026-09-06#R5]].
+
+---
+
+## 42. The export's golden file is synthetic
+
+**Decided 2026-09-06.** No real export is ever committed as a fixture. See
+[[review-2026-09-06#R9]].
+
+---
+
 ## Open
 
-Everything answerable from the AEAT's own documentation has been answered. What is left is one
-conversation and one lookup.
+The full list, with what each gates, is in [[implementation-plan#Questions that gate a phase]].
+The short form:
 
-### 1. For the gestor, in one conversation
+### For the gestor, one conversation
 
-**The six classification rows** in [[tax-determination#The six rows]]. The existing system stores a
-percentage, and a 0% line could be not-subject by localisation, exempt as an export, or reverse
-charge. Those are three different records and the data cannot tell them apart, so the mapping has to
-be stated once per group. Rows 3 (EU business) and 5 (Canary Islands) are the substantive ones; row
-6 is worth sanity-checking rather than merely classifying.
+1. **F1 or F2 for consumer invoices.** The most consequential question on the list, and new: 93% of
+   invoices have no customer tax id. Decides the record shape, the refund code (R5) and the PDF.
+2. The six classification rows in [[tax-determination#The six rows]].
+3. The rectificativa type mapping.
+4. Whether a delivered duplicate is annulled or rectified.
+5. **Whether starting VERI\*FACTU submission early binds for the calendar year.** Decides whether
+   rollback exists after cutover.
+6. Whether EU VAT numbers must be validated for reverse charge.
+7. Whether a zero-value supply needs an invoice.
+8. Whether OSS matters for EU consumers at this volume.
 
-**The rectificativa type mapping.** Expected narrow: R1 for essentially everything (Art. 80.Uno
-LIVA), R4 for corrections of customer data, R2 and R3 out of scope, and `I` por diferencias for
-every refund. See [[corrections]].
+### To obtain
 
-**Whether a duplicate invoice that was delivered** is annulled or rectified. The operation was never
-real, which points to annulment; delivery points the other way. See
-[[corrections#The test for annulment is whether the operation was real]].
+The qualified certificate, pre-production access confirmed against it, the cluster and database
+targets, and the code lists from the AEAT record design spreadsheet.
 
-**Whether we should be validating EU VAT numbers.** Raised by row 3: reverse charge normally
-requires a valid one, and `customer_dni_nif_cif` is free text today, defaulting to an empty string.
+### Not blocking
 
-### 2. To read, not to ask
-
-**The permitted code values** for `CalificacionOperacion`, `OperacionExenta` and `ClaveRegimen`, from
-the AEAT's "Diseños de registro de facturación" spreadsheet linked at
-`sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu/informacion-tecnica/disenos-registro.html`.
-Read them from the source rather than from memory or a summary: they are a compliance surface and
-they are versioned.
-
-### 3. Not blocking, possibly never needed
-
-**Whether one obligado may run several SIFs**, each with its own chain. Load-bearing under the
-rejected multi-SIF design, now merely interesting. See [[verifactu]].
+Whether one obligado may run several SIFs. Merely interesting now.

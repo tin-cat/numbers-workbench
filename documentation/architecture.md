@@ -76,6 +76,12 @@ whatever Numbers says. A Numbers outage delays invoices; it never loses them.
 
 This also buys a clean cutover. See [[migration#Cutover]].
 
+Two conditions make the "never loses them" true, and both are Litmind-side work: the command is
+written through a **transactional outbox** in the same transaction as the payment record, because
+the ServiceBus is documented as able to lose a published message silently; and a **reconciliation
+job** asserts that every successful charge and PayPal transaction has exactly one invoice. See
+[[review-2026-09-06#R2]].
+
 **Reads.** Live calls, no caching to begin with. If latency proves to be a problem, a short-lived
 non-durable response cache flushed on the erasure signal does not meaningfully reintroduce a copy.
 Do not build it up front.

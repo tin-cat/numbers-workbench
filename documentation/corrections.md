@@ -117,13 +117,13 @@ Ley 37/1992 (LIVA). The full field also covers ordinary invoices:
 | Code | Meaning |
 |---|---|
 | `F1` | Ordinary invoice, with full recipient details. **This is what we issue.** |
-| `F2` | Simplified invoice (a ticket, no recipient identified). We never issue these. |
+| `F2` | Simplified invoice, no recipient identified, permitted below a value threshold. **Open whether consumer invoices should be these**: 93% of invoices carry no customer tax id. See [[review-2026-09-06#R4]]. |
 | `F3` | An invoice replacing previously declared simplified invoices. Not applicable. |
 | `R1` | Rectificativa under **Art. 80.Uno, Dos and Seis LIVA**, and for an error grounded in law. Art. 80.Uno is the important one: **the taxable base is reduced when the operation is wholly or partly cancelled, or the price is altered after the fact.** "Error grounded in law" covers applying the wrong VAT rate or the wrong exemption. |
 | `R2` | Rectificativa under **Art. 80.Tres**: the customer has entered insolvency proceedings (concurso de acreedores). |
 | `R3` | Rectificativa under **Art. 80.Cuatro**: bad debts, after the legally defined process. A different flow entirely, with time limits and formal claim requirements. |
 | `R4` | Rectificativa, **everything else**. In practice, correcting data that is not the tax base: a wrong name, a wrong address, a mistyped NIF. |
-| `R5` | Rectificativa of simplified invoices. Not applicable, since we never issue `F2`. |
+| `R5` | Rectificativa of simplified invoices. **Applicable if consumer invoices are `F2`**, in which case it is the refund code for the majority of invoices. |
 
 ### What this means for our cases
 
@@ -139,7 +139,9 @@ Ley 37/1992 (LIVA). The full field also covers ordinary invoices:
 | Customer insolvency | **R2** | Out of scope for now. |
 
 So **R1 covers essentially everything we will actually do**, R4 is the occasional data fix, and
-R2/R3 are separate procedures we are not building.
+R2/R3 are separate procedures we are not building, *unless* consumer invoices are simplified, in
+which case **R5** takes over for those and R1 remains for the business ones. That single answer from
+the gestor decides the shape.
 
 ## `TipoRectificativa`: how the correction is expressed
 
@@ -207,8 +209,9 @@ Refund **first**, rectify **second**. The two failure modes are not symmetrical:
 - Rectificativa issued, refund fails: a permanent, immutable record in the chain asserting a refund
   that never happened, correctable only by yet another record.
 
-So the rectificativa is requested from a durable queue **keyed on the Stripe refund id**, exactly as
-issuance is keyed on the charge id. See [[api-contract#Idempotency]].
+So the rectificativa is requested from a durable queue **keyed on the processor's refund id**
+(Stripe's, or PayPal's), exactly as issuance is keyed on the charge or transaction id. See
+[[api-contract#Idempotency]].
 
 ## Trigger the rectificativa from the webhook, not from the UI action
 

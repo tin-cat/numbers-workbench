@@ -147,6 +147,32 @@ Both are worth doing anyway as cheap integrity checks, but they are ours to sche
 requirements to satisfy. **Build VERI\*FACTU-only, and do not add a non-submitting mode**, because
 adding one later drags both obligations in with it.
 
+### The pre-production environment
+
+The web service specification ("Veri-Factu_Descripcion_SWeb.pdf", v1.0.3) defines two environments
+with identical services: **production** at `www2.agenciatributaria.gob.es` and **pre-production
+("entorno de PRUEBAS")** at `prewww2.aeat.es`. Both require the qualified certificate. Records sent
+to pre-production have no fiscal effect. This is where every phase before cutover talks to, on the
+development machine and in production alike. See [[implementation-plan]].
+
+### Flow control, which the sender has to honour
+
+Article 16.2 of the order, restated in the specification. After each submission the AEAT returns
+`TiempoEsperaEnvio`, **initially 60 seconds**. The next submission may not be sent until either that
+many seconds have elapsed **or 1,000 records have accumulated**, whichever comes first, and the
+value can change with every response.
+
+So the outbox worker is a **batching, throttled sender** that reads the wait time from each reply.
+At fifteen invoices a day that is one batch a minute at most; a naive per-record loop would be
+refused on its second invoice.
+
+### Response states
+
+Per submission: `Correcto`, `ParcialmenteCorrecto`, `Incorrecto`. Per record: `Correcto`,
+`AceptadoConErrores`, `Incorrecto`. A rejected record never exists at the AEAT and is resubmitted as
+an *alta por rechazo*; an accepted-with-errors one exists there with its errors and is corrected by
+an *alta de subsanación*. Two different states, never collapsed. See [[corrections]].
+
 ### Record identity, and why a number can never be reused
 
 A record is identified by **`Emisor` + `SerieYNúmeroFactura` + `FechaExpedición`**. A second record

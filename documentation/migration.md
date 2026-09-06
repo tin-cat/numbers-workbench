@@ -10,7 +10,7 @@ The measured state of the data this plan is built on is in [[source-data-finding
 **Owner, 2026-09-06:** the production instance of old Numbers is complete and up to date and holds
 every invoice for every source. History is migrated from there.
 
-Litmind is not a second source. It is an **independent witness**, and there are three specific
+Litmind is not a second source. It is an **independent witness**, and there are four specific
 things it must still supply, because old Numbers does not have them:
 
 | What | Why Litmind is needed |
@@ -18,14 +18,17 @@ things it must still supply, because old Numbers does not have them:
 | **Rectificativa links** | Old Numbers has no `anullation_invoice_id` equivalent. The relationship between each of the 2,722 `WEBANULACION` invoices and the invoice it corrects exists only in Litmind, and Verifactu needs it as `FacturasRectificadas`. |
 | **Amount precision** | Old Numbers stores money as `float`, Litmind as `double`. See [[source-data-findings#Amount precision]]. |
 | **Anonymization state** | Old Numbers was never told about anonymizations. See below and [[source-data-findings#Old Numbers holds data Litmind already anonymized]]. |
+| **Issuer identity per invoice** | Old Numbers has no issuer fields. Litmind stores name, address and tax id on every row, and there are ten distinct identities across the history. A re-rendered 2015 PDF must show the 2015 address. See [[source-data-findings#The issuer has had ten identities]]. |
 
 Everything else, including the 78 manual invoices that exist nowhere else, comes from old Numbers.
+And not only invoices: `expenses` (1,504), `providers` (109), `financial_balances` (a manual snapshot
+of account balances over time) and `annotations` (4) all migrate, all reconcile.
 
 ## It is two migrations plus a cutover
 
 | | What | Risk |
 |---|---|---|
-| **1** | Old Numbers to Numbers v2, enriched from Litmind for the three fields above | Medium. One source, but a join that has to be right. |
+| **1** | Old Numbers to Numbers v2, enriched from Litmind for the four fields above | Medium. One source, but a join that has to be right. |
 | **2** | The cutover, where an application stops issuing locally and starts calling Numbers v2 | High. Live, money flowing, webhooks that do not pause. |
 
 They have different failure modes and different remedies, and separating them is most of the work.
@@ -124,13 +127,21 @@ Worth deciding separately whether old Numbers should be purged of that data befo
 **Reject dual-write.** Writing to both systems for a comfort period means two systems assigning
 numbers from the same series, which is exactly the collision that must never happen.
 
-### Step 1: shadow
+### Step 1: rehearsal against the AEAT pre-production service
 
-The application keeps issuing locally as it does today, and additionally calls Numbers v2, which
-issues into a **throwaway series** and discards the result. Real production traffic through the real
-code path with zero fiscal consequence.
+The application keeps issuing locally as it does today, and additionally sends every command to
+Numbers v2, which issues into a **rehearsal chain** and submits to the AEAT **pre-production**
+environment (`prewww2.aeat.es`). Real production traffic through the real code path, and the AEAT
+test service receives every record, with no fiscal effect.
 
-Run it long enough to see a renewal cycle, a refund and a foreign-VAT case.
+**Not a throwaway series against production.** An earlier version of this step said that, and it
+would have issued real invoices: the AEAT is explicit that a SIF pointed at production cannot
+produce test invoices, and anything it issues must be annulled afterwards. See
+[[review-2026-09-06#R1. Shadow mode as designed would issue real invoices]].
+
+Run it long enough to see a renewal cycle, a refund, a PayPal payment, a USD invoice and an IRPF
+invoice. **Then wipe the rehearsal chain entirely** before cutover, so the first real record is
+`PrimerRegistro: S` and chains to nothing. Full runbook in [[implementation-plan#Phase 6: cutover]].
 
 ### Step 2: flip authority, one source at a time
 

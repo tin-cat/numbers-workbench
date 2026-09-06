@@ -1,5 +1,9 @@
 # Roadmap
 
+> **Superseded on 2026-09-06 by [[implementation-plan]]**, which has phases, exit criteria, the
+> development-machine phase and the cutover runbook. Kept for the reasoning in its pre-work list.
+
+
 Sequencing, driven by what is actually compliance-critical rather than by what is interesting.
 
 ## The schedule

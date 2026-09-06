@@ -15,6 +15,9 @@ thinking behind it.
 New to the vocabulary? Start with the [[documentation/glossary|Glossary]]: SIF, VERI\*FACTU, RF,
 huella, rectificativa, IRPF and the rest, in plain terms.
 
+**Building it?** [[documentation/implementation-plan|The implementation plan]] is the current
+sequence, and [[documentation/review-2026-09-06|the review]] is why each step is there.
+
 Then read in this order:
 
 1. [[documentation/architecture|Architecture]], the shape of the system and why it is that shape.

@@ -63,11 +63,16 @@ An outbound port in the hexagonal sense: the domain produces a report model for 
 renders Victor's exact workbook. If the format ever does change, that is a new adapter, kept
 alongside the old one, not an edit to it.
 
-**Pin it with a golden-file test.** Keep a known-good reference workbook in the repository as a
-fixture (old Numbers already ships one at `app/export/contab-loren.xlsx`) and assert the generated
-file matches it cell for cell, including types, formulas and the blank-row rhythm. This is the only
-mechanism that will keep "the format does not change" true in three years, when nobody remembers why
-column J is a formula.
+**Pin it with a golden-file test, on synthetic data.** The test builds a small set of invented
+invoices and expenses, generates the workbook, and asserts it cell for cell against a fixture
+produced from the same invented data: types, formulas, widths, styling and the blank-row rhythm.
+This is the only mechanism that will keep "the format does not change" true in three years, when
+nobody remembers why column J is a formula.
+
+**Never commit a real export as the fixture.** Old Numbers' `app/export/contab-loren.xlsx` contains
+real client names and tax ids, and personal data in git history is permanent. The real export is
+compared against the old system's real export **once, by hand, during migration rehearsal**. See
+[[review-2026-09-06#R9]].
 
 ## Delivery
 

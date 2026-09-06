@@ -18,6 +18,7 @@ never be relaxed for convenience.
 | `getInvoice` | One invoice by its code. |
 | `listInvoices` | A source's invoices for one of its customers. |
 | `getPdf` | The rendered PDF. |
+| `getInvoiceByExternalReference` | The invoice for a given payment: provider, kind, id. What the account page uses to show "the invoice for this charge", since the source holds no invoice data. |
 | `signalCustomerState` | Retention signals. See [[data-retention]]. |
 
 Refunds are not a verb. A refund is a rectificativa.
@@ -44,8 +45,11 @@ Note two problems in the current arrangement that must be fixed before anything 
 Load-bearing rather than a nicety, because a source that holds no invoice data cannot answer "did I
 already invoice this charge" without asking.
 
-- **The caller supplies the key.** For the SaaS sources the Stripe charge id is the natural one; it
-  is already stored in Litmind's `payments`.
+- **The caller supplies the key.** For the SaaS sources it is the payment processor's transaction
+  identity: the **Stripe charge id**, or the **PayPal transaction id**. Both are already in Litmind's
+  `payments`. PayPal is live at roughly ten percent of current invoicing and is the source of the
+  January 2026 duplicates, so it is a first-class case, not a footnote. See
+  [[review-2026-09-06#R3]].
 - **Store the key, a hash of the request body, and the response**, in the same transaction as the
   chain append. A replay returns the identical invoice payload, not a bare "already exists" that
   leaves the caller with nothing to render.
