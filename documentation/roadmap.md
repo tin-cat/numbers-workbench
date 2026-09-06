@@ -36,6 +36,10 @@ them all in one pass.
 - The migration of history, with a clean reconciliation report.
 - **The manual invoice creation flow.** Not deferrable: a consultancy invoice issued after the
   deadline is issued under the same NIF and must be a Verifactu record like any other.
+- **The cancellation and refund flows**, emitting annulments and rectificativas correctly. Refunds
+  do not stop happening because a deadline passed. See [[corrections]].
+- **The gestor export**, reproducing the existing workbook exactly, with its golden-file test. The
+  accounts still have to reach Victor. See [[gestor-export]].
 - Backups with PITR, and one rehearsed restore.
 
 ## Can land afterwards without compliance risk

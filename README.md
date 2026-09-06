@@ -22,6 +22,10 @@ Read in this order the first time:
 The rest:
 
 - [[documentation/api-contract|API contract]], the surface between sources and Numbers v2.
+- [[documentation/corrections|Cancellations and refunds]], annulment against rectificativa, and who
+  calls Stripe.
+- [[documentation/money|Money]], how amounts are represented so they never drift.
+- [[documentation/gestor-export|The gestor export]], the Excel contract with Victor.
 - [[documentation/data-retention|Data retention]], who owns the clock and what signals cross.
 - [[documentation/migration|Migration]], the three migrations, reconciliation and cutover.
 - [[documentation/source-data-findings|Findings in the existing data]], measured, and what the

@@ -174,12 +174,124 @@ holds and old Numbers does not:
 
 ---
 
+## 13. Money is an integer of minor units plus an explicit scale
+
+**Decided.** Never a float, never a double, nowhere, including on the wire. `Money`, `Currency` and
+`Amount` value objects, immutable, with no operation that rounds implicitly, and a `TaxBreakdown`
+that refuses to exist unless `base + iva - irpf == total` exactly.
+
+Scale is stored explicitly rather than derived from the currency, because line amounts in the
+existing data carry four decimal places, not two.
+
+Full detail in [[money]].
+
+---
+
+## 14. Litmind triggers the Stripe refund, Numbers v2 issues the rectificativa
+
+**Decided.** The source application moves the money; Numbers v2 records the fiscal consequence. A
+refund in Litmind is never only a refund (it cancels the ad, revokes the membership, sends the
+email), and giving the SIF the Stripe keys of every source would let a Numbers compromise move
+money.
+
+**Order matters and is not symmetrical**: refund first, rectify second. A refund without its
+rectificativa is a recoverable gap; a rectificativa without its refund is a permanent immutable
+record of something that never happened.
+
+The trigger stays on Litmind's existing `charge.refunded` webhook rather than moving to the admin
+button, so that a refund issued by hand from the Stripe dashboard also produces a rectificativa.
+
+Full detail in [[corrections]].
+
+---
+
+## 15. The gestor export is an external contract
+
+**Decided.** The Excel workbook Victor integrates does not change: two sheets, `Ingresos` and
+`Gastos`, the exact columns, headers, widths, styling, the blank row between months, and the
+percentage columns as live formulas rather than values.
+
+Pinned with a golden-file test against a reference workbook kept in the repository, because that is
+the only thing that keeps the promise true once nobody remembers why column J is a formula.
+
+Downloadable always, emailable on an explicit button with the recipient in configuration and every
+send audit logged.
+
+Full detail in [[gestor-export]].
+
+---
+
+## 16. Multi-currency from day one: EUR and USD
+
+**Decided.** Not a later feature. 111 of Litmind's invoices are USD, issued continuously since May
+2019.
+
+The parts that matter are not the currency field but what surrounds it: the tax figures also have to
+exist in euros, the exchange rate used is **captured at issuance and stored permanently** because
+the huella covers the amounts and a re-derived rate is a broken record, rates are cached locally so
+issuance never blocks on an external service, a missing rate is a **refusal to issue** rather than a
+guess, and a correction uses the rate of the invoice it corrects rather than the rate of the day.
+
+Full detail in [[money#Currencies]].
+
+---
+
+## 17. Payment processor references are stored, but generically and with a retention class
+
+**Decided.** Numbers v2 keeps the charge id, the refund id, the processor invoice id and the
+customer id, because reconciliation needs them: walking from an invoice to the charge that paid it,
+and asserting every refund has exactly one rectificativa.
+
+Three constraints. They are modelled as generic `{provider, kind, id}` references rather than
+`stripe_*` columns, because manual invoices have no processor and a second product could use a
+different one. They are **metadata, never part of the fiscal record**, so nothing about a record's
+validity may depend on one resolving. And plan and subscription ids are **not** stored: those are
+product data and stay in the source.
+
+The **customer id is personal data** and belongs in the minimize set, unlike the transaction-scoped
+ids. Litmind already treats it that way in `anonimizeInvoices()`.
+
+Full detail in [[api-contract#External references, for traceability]].
+
+---
+
+## 18. The 47 currency-less invoices are EUR
+
+**Decided (owner, 2026-09-06).** 47 invoices from a five-day window in April 2019 have no currency,
+totalling 212.81. The window closes a week before the first USD invoice, so the column was very
+likely added while USD support was being built and these were never backfilled.
+
+They are imported as EUR, set **explicitly on the row** during the migration rather than defaulted
+at read time, so the assumption lives in the data with a decision behind it.
+
+---
+
 ## Open
 
 ### Confirmations required
 
 Listed in [[verifactu#Open questions to confirm with the AEAT]]. The deadline confirmation is the
 one that sets the schedule and the one that closes the rollback window.
+
+### Does Victor want a period filter?
+
+The current export is all time, with no period filter. A gestor normally wants a quarter or a year.
+Adding a selector does not change the format, but it is a behaviour change and his integration may
+depend on receiving the whole history. Ask before assuming. See
+[[gestor-export#An open question for Victor]].
+
+### Does Victor want USD converted?
+
+The current export writes a USD invoice's raw amount into the same Subtotal, IVA and Total columns
+as the EUR ones, changing only the cell's number format. A column sum therefore adds dollars to
+euros. With 111 USD invoices totalling 1,853.20 this is small, but it is either something Victor
+handles by hand or something nobody has noticed. Ask before changing anything: it touches the format
+contract. See [[gestor-export#An open question for Victor]].
+
+### Rectificativa type mapping
+
+Which `TipoFactura` (R1 to R5) our refund cases fall under. Needs the gestor. See
+[[corrections#Rectificativa shape]].
 
 ### Tax determination migration
 

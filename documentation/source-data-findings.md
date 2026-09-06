@@ -38,6 +38,26 @@ the whole history is 11.**
 This is what makes the strict single-writer chain constraint free rather than expensive. See
 [[architecture#The chain is a strict single-writer structure]].
 
+## Currencies in use
+
+| Currency | Invoices | First | Last | Sum of totals |
+|---|---|---|---|---|
+| EUR (`2`) | 58,649 | 2011-02-07 | 2026-06-16 | 551,771.06 |
+| USD (`1`) | **111** | 2019-05-06 | 2025-12-29 | 1,853.20 |
+| **NULL** | **47** | 2019-04-25 | 2019-04-29 | 212.81 |
+
+**USD is live and continuous**, not hypothetical, so multi-currency is a day-one requirement rather
+than a later feature. See [[money#Currencies]].
+
+**47 invoices have no currency at all**, all inside a five-day window in April 2019. That window
+ends a week before the first USD invoice, which strongly suggests the `currency` column was added
+while USD support was being built and these rows were never backfilled. They are almost certainly
+EUR, but `Money` cannot be constructed without a currency, so the migration has to resolve them.
+
+**Decided (owner, 2026-09-06): treat them as EUR.** The migration sets the currency explicitly on
+these 47 rows rather than inferring it at read time, so the assumption is recorded in the data
+rather than buried in code.
+
 ## Series integrity
 
 | Check | Result |

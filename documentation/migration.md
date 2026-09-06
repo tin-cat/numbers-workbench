@@ -107,6 +107,10 @@ Worth deciding separately whether old Numbers should be purged of that data befo
   relationships, not as loose negative invoices.
 - **The 78 manual invoices** use a different code convention entirely (`21001`, year plus sequence)
   and need their own series in the new scheme.
+- **47 invoices have a NULL currency**, all within five days of April 2019, totalling 212.81. The
+  owner decided on 2026-09-06 to treat them as **EUR**. Set it explicitly during the import, as a
+  named migration step with its own line in the reconciliation report, so that in 2031 the record
+  shows a decision rather than a coincidence. See [[source-data-findings#Currencies in use]].
 
 ## Cutover
 

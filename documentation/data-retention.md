@@ -55,7 +55,7 @@ Keep these separate in the model and in the API. Collapsing any two of them caus
 
 | Operation | What it does | Floor |
 |---|---|---|
-| **Minimize** | Drops what the fiscal record does not need: phone, email, possibly the payment processor ids. Keeps name, NIF, address, amounts, dates, description, huella. | Earliest clock. Can run while the record is still fully live. |
+| **Minimize** | Drops what the fiscal record does not need: phone, email, and the **payment processor customer id**, which is a stable identifier resolving to a named person for as long as the processor account exists. Keeps name, NIF, address, amounts, dates, description, huella, and the transaction-scoped references needed for reconciliation. | Earliest clock. Can run while the record is still fully live. |
 | **Anonymize** | Strips the customer identity. | Cannot run while any retention period is open: an invoice that does not identify its customer is not a valid invoice. This is the fifth-exercise clock. |
 | **Purge** | Removes the detail. | **The chain link cannot go.** Position, huella and the link to the previous record must survive, or every later record becomes unverifiable. "Purge" means purging the detail and keeping the skeleton, never deleting a row. |
 | **Cancel** | Not a retention operation at all. Annulling an invoice is a *registro de anulación*, a fiscal act that creates a new record in the chain. | Keep it out of this family entirely. |

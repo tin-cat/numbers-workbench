@@ -59,6 +59,42 @@ The incident is documented in the Litmind workbench under
 `issues/2026-01 Repeated invoices issue`. Under Verifactu the same event would have written
 duplicates into the chain. See also [[source-data-findings#Duplicate codes]].
 
+## External references, for traceability
+
+Numbers v2 stores the payment processor references that came with an invoice, because reconciliation
+genuinely needs them: walking from an invoice to the charge that paid it, and asserting that every
+Stripe refund has exactly one rectificativa. See [[corrections#Reconciliation]].
+
+Three rules make this safe.
+
+**Model them generically, not as `stripe_*` columns.** Manual invoices have no processor at all, and
+a second product could use a different one. Store a small set of typed external references, each
+`{provider, kind, id}`, owned by the source that supplied them. The SIF must not be coupled to one
+payment processor.
+
+**They are metadata, never part of the fiscal record.** The huella is computed over the field set
+the AEAT defines, and these are not in it. Nothing about the validity or verifiability of a record
+may depend on an external reference resolving.
+
+**Transaction references in, product references out.**
+
+| Reference | Store? | Why |
+|---|---|---|
+| Charge id | Yes | It is the issuance idempotency key already |
+| Refund id | Yes | The rectificativa idempotency key, and the reconciliation handle |
+| Processor invoice id | Yes | Reconciling against the processor's own invoice list |
+| Customer id | Yes, with a caveat below | Walking from a customer to their invoices during a dispute |
+| Plan id, subscription id | **No** | Product data. Numbers has no business knowing what plan someone was on. It stays in the source. |
+
+**The customer id is personal data and is minimized early.** Unlike a charge id, which is scoped to
+one transaction, a processor customer id is a stable identifier that stays resolvable to a named
+person with an email and a card for as long as the processor account exists. It belongs in the
+**minimize** set, not kept for the life of the record.
+
+Litmind already treats these this way: `anonimizeInvoices()` nulls `stripeInvoiceId`,
+`stripeChargeId`, `stripePlanId` and `stripeSubscriptionId`. That classification carries across. See
+[[data-retention#Four operations, four different clocks]].
+
 ## Tax determination lives here
 
 The caller passes **facts**, not conclusions: customer country, NIF, whether it is B2B or B2C, and
