@@ -539,27 +539,46 @@ Full detail in [[tax-determination]].
 
 ## Open
 
-### Confirmations required
+Everything answerable from the AEAT's own documentation has been answered, including the deadline
+and the submission-order question. See
+[[verifactu#Answered from the AEAT's own documentation]]. What is left falls into three groups.
 
-The deadline (1 July 2027, by RDL 15/2025) and the submission-ordering question are both now
-answered from the AEAT's own documentation. See
-[[verifactu#Answered from the AEAT's own documentation]]. What remains is the gestor conversation
-above.
+### 1. For the gestor, in one conversation
 
-### For the gestor, in one conversation
+Six questions, all concrete enough to answer in a single sitting.
 
-Three things, all now concrete:
+**Corrections:**
 
 1. **The rectificativa type mapping.** Expected answer is narrow: **R1 for essentially everything**
    (Art. 80.Uno LIVA), R4 for corrections of customer data, R2 and R3 out of scope. Plus **`I`, por
    diferencias, for every refund**. See [[corrections]].
-2. **The six classification-code rows** in [[tax-determination#Mapping onto Verifactu]], plus how
-   IRPF withholding is expressed in the record.
-3. **Whether a duplicate invoice that was delivered to the customer** is annulled or rectified. The
+2. **Whether a duplicate invoice that was delivered to the customer** is annulled or rectified. The
    operation was never real, which points to annulment; delivery points the other way. See
    [[corrections#The test for annulment is whether the operation was real]].
 
-### Tax determination migration
+**Tax classification:**
 
-Lifting the country and province tax configuration out of each source application. Now specified in
-[[tax-determination]]; what is left is the port itself and the gestor conversation above.
+3. **The six classification-code rows** in [[tax-determination#Mapping onto Verifactu]], plus how
+   IRPF withholding is expressed in the record. Read FAQ section 23 on Canarias first.
+
+**Foreign currency**, which is 111 invoices and rising:
+
+4. **Must the tax figures be expressed in euros on a USD invoice?** Planned for either way, but it
+   decides whether the EUR conversion is mandatory or merely useful. See
+   [[money#The tax figures must also exist in euros]].
+5. **Which exchange rate applies**, and on which date. Expected: the Banco de España or ECB
+   reference rate on the fecha de devengo. This is stored permanently on the record, so it has to be
+   right the first time. See [[money#The exchange rate is part of the fiscal record]].
+6. **The rounding mode** for VAT computation. Expected: half up. See [[money#Rounding]].
+
+### 2. Technical, at the moment the code is written
+
+- **Argon2id parameters** against the OWASP guidance current at build time. The recorded m=19456,
+  t=2, p=1 is a starting point and these numbers move. See [[access-control]].
+- **The Symfony version.** The current major against the previous LTS; prefer the LTS for a system
+  with this lifespan. See [[interface#Versions]].
+
+### 3. Not blocking, and possibly never needed
+
+- **Whether one obligado may run several SIFs**, each with its own chain. This was load-bearing
+  under the rejected multi-SIF design and is now merely interesting. See [[verifactu]].
