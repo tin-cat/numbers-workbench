@@ -105,9 +105,9 @@ One namespace per NIF. Every source gets its own distinct series, allocated by N
 - **CONFIRM** whether records must be *submitted* in chain order, or whether the AEAT accepts them
   in any order and validates the chain later. If order is required, the outbox needs per-chain FIFO
   rather than a plain queue.
-- **CONFIRM** the current deadline for our case. It has already been moved once by RD 254/2025, and
-  the date for personas físicas sat later than the one for sociedades. This determines the whole
-  schedule, and it also determines when the rollback option expires, see [[migration#Rollback]].
+- ~~The deadline~~ **Answered: 1 July 2027**, the mandatory date for autónomos. See
+  [[roadmap#The schedule]]. This is also the date the rollback option expires, see
+  [[migration#Rollback]].
 - **CONFIRM** the mapping of our tax cases (Spanish B2C, Spanish B2B, EU reverse charge, non-EU) onto
   `CalificacionOperacion`, `OperacionExenta` and `ClaveRegimen`.
 

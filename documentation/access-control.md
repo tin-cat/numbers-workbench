@@ -118,18 +118,26 @@ nonce-based, no-inline-script policy, but it has to be written down or the first
 confusingly.
 
 **What happens when Turnstile itself is unavailable.** The verification is a server-to-server call
-to Cloudflare, and that call can time out. Failing closed everywhere means a Cloudflare incident
-stops all work in the back office; failing open everywhere makes the control decorative.
+to Cloudflare, and that call can time out.
 
-Recommended split, **to confirm**:
+**Decided (owner, 2026-09-06): fail closed, everywhere.** If the challenge cannot be verified, the
+submission is refused and the person is told why, in plain words, with the form's contents
+preserved so nothing is retyped. No silent pass, no degraded mode.
 
-| Form | On verification failure |
-|---|---|
-| Login, and anything reachable without a session | **Fail closed.** Retrying is cheap, and this is where the control actually earns its place, against credential stuffing. |
-| Forms inside the authenticated area | **Fail open, log it, alert.** The real controls there are the session and the CSRF token; Turnstile is defence in depth, and it should not be able to halt the accounts. |
+### The stacked-dependency risk, and its one mitigation
 
-Whichever way this goes, it must be a configured, documented behaviour rather than whatever the HTTP
-client happens to do on a timeout.
+Fail-closed Turnstile plus mandatory SMS 2FA means **every login depends on two external services**,
+Cloudflare and Twilio. If either is having an incident, nobody gets in. The recovery codes in
+[[#Recovery, which is not optional here]] cover Twilio; nothing covers Cloudflare.
+
+So there needs to be one emergency lever: **an environment flag that disables Turnstile**, taking
+effect on a deploy or a container restart. Setting it requires shell or deploy access, which is
+already the highest privilege anyone has, so it weakens nothing that was not already trusted. It
+exists so a Cloudflare incident during a filing week cannot stop the accounts.
+
+Requirements on it: default off, loudly visible in the interface while active, and every request
+served while it is set gets an audit entry. An emergency lever nobody can tell is pulled is worse
+than no lever.
 
 ## The permission model
 

@@ -2,10 +2,26 @@
 
 Sequencing, driven by what is actually compliance-critical rather than by what is interesting.
 
-> The deadline itself is unconfirmed. It has already moved once, by RD 254/2025, and the date for
-> personas físicas sat later than the one for sociedades. Confirming it is the first task, because
-> it sets everything below and it closes the rollback window. See
-> [[verifactu#Open questions to confirm with the AEAT]].
+## The schedule
+
+**The mandatory date for autónomos is 1 July 2027.** From today, 6 September 2026, that is
+**roughly ten months**.
+
+Working backwards, with the constraint that the cutover should land well before the deadline because
+that is when rollback stops being available (see [[migration#Rollback]]):
+
+| Target | What |
+|---|---|
+| Now, in parallel | The Litmind-side prerequisites below. They depend on nothing and get harder later. |
+| Oct to Dec 2026 | The core build: issuance, chain, huella, QR, PDF, AEAT submission, login and permissions, the manual invoice flow. |
+| Dec 2026 | Migration rehearsals against restored snapshots, until the reconciliation report is clean twice running. |
+| Jan to Feb 2027 | Shadow mode on Litmind, long enough to see a renewal cycle, a refund and a foreign-currency invoice. |
+| **Mar 2027** | **Cutover.** Litmind first, then the other applications, manual channel last. |
+| Mar to Jun 2027 | Buffer. Everything deferred below, and room for the cutover to slip without touching the deadline. |
+
+Ten months is workable but not generous for the scope in [[architecture]], and the buffer is the
+part to protect. A cutover in June 2027 would technically meet the date while leaving no room to
+retreat if something is wrong, which is the worst place to be.
 
 ## Before anything is built
 

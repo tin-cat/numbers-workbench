@@ -80,7 +80,7 @@ Constraints on the email path, because it sends client names and fiscal ids to a
 - The period is in the filename and the subject, so a resend is never ambiguous.
 - It is an explicit action with a confirmation, not a side effect of anything else.
 
-## Two open questions for Victor
+## Two settled questions
 
 ### Currency
 
@@ -93,19 +93,19 @@ them by hand. But Spanish books are kept in euros, and Numbers v2 will hold the 
 every foreign-currency invoice anyway (see [[money#The tax figures must also exist in euros]]), so
 it *could* export converted figures, or both.
 
-Do not decide this unilaterally. It changes what the numbers in those columns mean, which is exactly
-the kind of change the format contract exists to prevent.
+**Decided (owner, 2026-09-06): keep it exactly as it is.** This is a known issue and it is handled
+outside the export. Numbers v2 reproduces the current behaviour, raw amount plus a currency number
+format, and does not convert.
+
+Worth a comment in the exporter saying so, since it looks like a bug to anyone reading it cold and
+the next person will otherwise "fix" it.
 
 ### Period
 
-The current export is **all time**, every invoice and expense ever, with no period filter. A gestor
-normally wants a quarter or a fiscal year.
+The current export is **all time**, every invoice and expense ever, with no period filter.
 
-Adding a period selector does not change the *format*, only which rows appear, so it is compatible
-with the contract above. But it is a behaviour change and it should be asked rather than assumed:
-Victor's integration may depend on receiving the full history each time.
-
-Default to reproducing the current behaviour, and add the period filter only once he confirms.
+**Decided (owner, 2026-09-06): no period filter.** Reproduce the current behaviour. Revisit only if
+Victor asks.
 
 ## Related
 

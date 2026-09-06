@@ -4,43 +4,99 @@ How an invoice is corrected once it exists. Decided 2026-09-06.
 
 Nothing is ever edited and nothing is ever deleted. Every correction is a new record.
 
-## Two different things that are easy to conflate
+## Two different mechanisms, and the line between them is not where you would guess
 
-| | Annulment | Rectificativa |
+Verifactu has two kinds of record, and the distinction is **about the record, not about the
+invoice**:
+
+| | `RegistroFacturacionAlta` | `RegistroFacturacionAnulacion` |
 |---|---|---|
-| When | The invoice should never have existed: issued in error, duplicate, wrong customer | A real sale that is being corrected: a refund, a price correction, a returned service |
-| Verifactu mechanism | A *registro de anulación*, which annuls the record | A new invoice of type R1 to R5, referencing the invoice it corrects |
-| Money | Usually none moved, or it is being fully returned because the sale was never valid | Money is returned, wholly or in part |
-| Numbers appear | The annulled invoice keeps its number; the annulment is a record about it | The rectificativa takes the next number in the rectificativa series |
+| What it is | A new invoice record. Includes ordinary invoices *and* rectificativas | Withdraws a record previously sent to the AEAT |
+| Used when | An invoice exists and is being issued or corrected | A **record** was sent that should not have been: sent twice, or sent for an invoice that was never actually issued |
+| Is it about money? | Yes, it is an invoice | No. It says nothing about the commercial reality, only that a record was wrong |
 
-The January 2026 incident in Litmind is the annulment case: a PayPal IPN retrying against a 500
-created invoices for payments that had already been invoiced. Those invoices should never have
-existed. See [[source-data-findings#The repeated invoices incident, January 2026]].
+**The practical rule:**
 
-A member who cancels a membership and is refunded is the rectificativa case.
+- **The invoice reached the customer and now needs undoing** (a refund, a cancelled sale, an invoice
+  issued in error that the customer already has) → **a rectificativa**. You cannot make a document
+  someone is holding disappear.
+- **Only the record was wrong** (a bug submitted it twice, or submitted one for an invoice that was
+  never issued) → **an anulación**.
 
-**The flows must ask which one it is** rather than inferring it from whether money moved. Getting it
-wrong is not correctable by anything except another record.
+An earlier version of this document said an invoice issued in error takes an anulación. That is too
+loose and would have produced the wrong flow. Once an invoice has been delivered, correcting it is a
+rectificativa regardless of how wrong it was.
 
-## Rectificativa shape
+So the January 2026 Litmind incident splits by whether the duplicate invoices actually reached
+customers. Those that were emailed need rectificativas; any that never left the system would be the
+anulación case, had a record been sent. **CONFIRM the exact boundary with the gestor**, because it
+turns on whether a document was issued in the legal sense, not on whether a row was written.
 
-Two axes, both required:
+## `TipoFactura`: the legal grounds for the correction
 
-- **`TipoFactura`**, R1 to R5, which says on what legal basis the correction is made. **CONFIRM**
-  the mapping of our cases with the gestor: a refunded service is most likely R1 or R4.
-- **`TipoRectificativa`**, `S` or `I`:
-  - **`I`, por diferencias**, states only the delta. This is the natural shape for a **partial
-    refund**.
-  - **`S`, por sustitución**, restates the corrected invoice in full with its new figures. This is
-    the natural shape for a **full reversal** and for a corrected price.
+**This is the part that is not obvious: R1 to R5 are not severity levels or amounts. They say
+*under which article of the VAT law* you are correcting**, and each maps to a different provision of
+Ley 37/1992 (LIVA). The full field also covers ordinary invoices:
 
-Every rectificativa carries `FacturasRectificadas`, the reference to the invoice or invoices it
-corrects. **This is the field Litmind holds and old Numbers does not**, which is why the migration
-has to join the two. See [[migration#The source of record is old Numbers]].
+| Code | Meaning |
+|---|---|
+| `F1` | Ordinary invoice, with full recipient details. **This is what we issue.** |
+| `F2` | Simplified invoice (a ticket, no recipient identified). We never issue these. |
+| `F3` | An invoice replacing previously declared simplified invoices. Not applicable. |
+| `R1` | Rectificativa under **Art. 80.Uno, Dos and Seis LIVA**, and for an error grounded in law. Art. 80.Uno is the important one: **the taxable base is reduced when the operation is wholly or partly cancelled, or the price is altered after the fact.** "Error grounded in law" covers applying the wrong VAT rate or the wrong exemption. |
+| `R2` | Rectificativa under **Art. 80.Tres**: the customer has entered insolvency proceedings (concurso de acreedores). |
+| `R3` | Rectificativa under **Art. 80.Cuatro**: bad debts, after the legally defined process. A different flow entirely, with time limits and formal claim requirements. |
+| `R4` | Rectificativa, **everything else**. In practice, correcting data that is not the tax base: a wrong name, a wrong address, a mistyped NIF. |
+| `R5` | Rectificativa of simplified invoices. Not applicable, since we never issue `F2`. |
+
+### What this means for our cases
+
+**CONFIRM all of this with the gestor**, but the expected mapping is narrow:
+
+| Our case | Expected | Why |
+|---|---|---|
+| A membership or ad refunded, wholly or in part | **R1** | The operation is cancelled or partly cancelled and the price returned. That is Art. 80.Uno. |
+| A duplicate invoice the customer received | **R1** | The operation it describes never existed, so it is cancelled in full. |
+| Wrong customer name, address or NIF on an otherwise correct invoice | **R4** | The tax base is not changing; identifying data is. |
+| Wrong VAT rate applied | **R1** | An error grounded in law. |
+| An unpaid invoice written off | **R3** | Only if the bad-debt procedure is actually followed. Out of scope for now. |
+| Customer insolvency | **R2** | Out of scope for now. |
+
+So **R1 covers essentially everything we will actually do**, R4 is the occasional data fix, and
+R2/R3 are separate procedures we are not building.
+
+## `TipoRectificativa`: how the correction is expressed
+
+A **second, independent** axis, and the one most often confused with the first.
+
+- **`I`, por diferencias.** States only the **delta**. A 20 EUR refund on a 100 EUR invoice is a
+  rectificativa carrying -20.
+- **`S`, por sustitución.** **Replaces** the original, restating the corrected invoice in full with
+  its new figures, and additionally declaring `ImporteRectificacion`, the original amounts being
+  replaced.
+
+**Recommendation: use `I` (por diferencias) for every refund, partial and full alike.**
+
+This revises an earlier note here that suggested `S` for full reversals. Both are legal, but for a
+system generating these automatically, `I` is better:
+
+- One code path instead of two. A full refund is a partial refund of the whole amount.
+- No `ImporteRectificacion` block to build and get right.
+- The delta is what actually happened: money moved back, by an amount.
+
+`S` earns its place when a corrected invoice is being reissued in full, which is the `R4` data-fix
+case rather than the refund case.
+
+## The reference to the original
+
+Every rectificativa carries `FacturasRectificadas`, identifying the invoice or invoices it corrects.
+
+**This is the field Litmind holds and old Numbers does not**, which is why the migration has to join
+the two. See [[migration#The source of record is old Numbers]].
 
 Today Litmind's `Invoice::refund()` produces a plain negative invoice in the `WEBANULACION` series
-with no type, no rectificativa axis and no structured reference to the original. That is what has to
-change.
+with no `TipoFactura`, no `TipoRectificativa` and no structured reference to the original. All three
+have to be added.
 
 ## Who triggers the Stripe refund
 

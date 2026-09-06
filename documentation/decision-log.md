@@ -400,37 +400,43 @@ it, so the old term survives nowhere.
 
 ---
 
+## 26. Deadline, Turnstile failure, and the export questions
+
+**All decided by the owner, 2026-09-06.**
+
+**The deadline is 1 July 2027**, the mandatory date for autónomos. Ten months from now. The schedule
+built back from it is in [[roadmap#The schedule]], targeting a **March 2027 cutover** so there is
+room to retreat.
+
+**Turnstile fails closed, everywhere.** If the challenge cannot be verified the submission is
+refused and says so, with the form contents preserved. This stacks two external dependencies
+(Cloudflare and Twilio) on every login, so it comes with one emergency lever: an environment flag
+disabling Turnstile, requiring shell or deploy access to set, loudly visible while active, and
+audited. See [[access-control#Turnstile]].
+
+**No period filter on the gestor export.** Reproduce the current all-time behaviour.
+
+**USD stays unconverted in the export.** A known issue, handled outside the export. Worth a comment
+in the exporter so the next reader does not "fix" it. See [[gestor-export#Currency]].
+
+---
+
 ## Open
 
 ### Confirmations required
 
-Listed in [[verifactu#Open questions to confirm with the AEAT]]. The deadline confirmation is the
-one that sets the schedule and the one that closes the rollback window.
-
-### Does Victor want a period filter?
-
-The current export is all time, with no period filter. A gestor normally wants a quarter or a year.
-Adding a selector does not change the format, but it is a behaviour change and his integration may
-depend on receiving the whole history. Ask before assuming. See
-[[gestor-export#An open question for Victor]].
-
-### Does Victor want USD converted?
-
-The current export writes a USD invoice's raw amount into the same Subtotal, IVA and Total columns
-as the EUR ones, changing only the cell's number format. A column sum therefore adds dollars to
-euros. With 111 USD invoices totalling 1,853.20 this is small, but it is either something Victor
-handles by hand or something nobody has noticed. Ask before changing anything: it touches the format
-contract. See [[gestor-export#An open question for Victor]].
-
-### Turnstile failure behaviour
-
-Fail closed everywhere, or the split recommended in decision 23. See
-[[access-control#Turnstile]].
+Listed in [[verifactu#Open questions to confirm with the AEAT]]. The deadline is now answered
+(1 July 2027); what remains is the submission-ordering question and the tax-case mapping.
 
 ### Rectificativa type mapping
 
-Which `TipoFactura` (R1 to R5) our refund cases fall under. Needs the gestor. See
-[[corrections#Rectificativa shape]].
+Still needs the gestor to sign off, but the expected answer is now narrow: **R1 for essentially
+everything we do** (Art. 80.Uno LIVA, the operation cancelled or the price altered), R4 for the
+occasional correction of customer data, and R2/R3 out of scope. Plus **`I`, por diferencias, for
+every refund**, partial and full. See [[corrections#TipoFactura: the legal grounds for the correction]].
+
+Also for the gestor: whether a duplicate invoice that reached the customer is rectified or annulled.
+See [[corrections#Two different mechanisms, and the line between them is not where you would guess]].
 
 ### Tax determination migration
 
