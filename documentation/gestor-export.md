@@ -55,6 +55,10 @@ Details that are part of the contract and easy to lose in a rewrite:
 
 ## Implementation
 
+The Spanish sheet names and headers above are **literal output strings inside the export adapter**,
+never identifiers. The code that builds the report model is English like everything else. See
+[[naming#Three boundaries where Spanish is unavoidable]].
+
 An outbound port in the hexagonal sense: the domain produces a report model for a period, an adapter
 renders Victor's exact workbook. If the format ever does change, that is a new adapter, kept
 alongside the old one, not an edit to it.

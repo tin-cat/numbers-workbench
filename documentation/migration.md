@@ -110,6 +110,10 @@ Worth deciding separately whether old Numbers should be purged of that data befo
 - **`suppliers` becomes `providers`** (owner, 2026-09-06), in the table, the domain and the
   interface. 109 rows. Rename during the import so the old term does not survive anywhere; expenses
   reference them, so the foreign key moves with it.
+- **Every Spanish and misspelled column name is dropped here**, not carried forward: `date_emmited`,
+  `anullation_invoice_id`, `is_anonimized`, `finantialBalances`, `base`, `final`. The migration's
+  read side is the only code allowed to mention them, and it is throwaway. Full mapping in
+  [[naming#Misspellings not to inherit]].
 - **47 invoices have a NULL currency**, all within five days of April 2019, totalling 212.81. The
   owner decided on 2026-09-06 to treat them as **EUR**. Set it explicitly during the import, as a
   named migration step with its own line in the reconciliation report, so that in 2031 the record

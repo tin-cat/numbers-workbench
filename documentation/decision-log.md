@@ -421,12 +421,40 @@ in the exporter so the next reader does not "fix" it. See [[gestor-export#Curren
 
 ---
 
+## 27. English everywhere in code, Spanish only at the boundaries
+
+**Decided (owner, 2026-09-06).** Class names, properties, variables, database tables and columns,
+API fields, configuration keys and enum cases are all English. Nothing Spanish is inherited from the
+systems being replaced.
+
+Three external contracts define their own vocabulary and are not ours to rename: **the AEAT XML**,
+**Victor's export**, and **the old databases being read during migration**. Each is confined to its
+adapter, which is what the hexagonal boundary is for. A Spanish identifier anywhere upstream of an
+adapter is a bug.
+
+So `TipoFactura` becomes a `CorrectionReason` enum with English cases and the R codes live only in
+the serialiser, `huella` becomes `hash`, `IVA` becomes `vat`, `IRPF` becomes `withholding`.
+
+The migration is also the moment to drop the typos both source schemas carry: `anullation_invoice_id`,
+`date_emmited`, `is_anonimized`, `finantialBalances`.
+
+Full mapping in [[naming]].
+
+---
+
 ## Open
 
 ### Confirmations required
 
 Listed in [[verifactu#Open questions to confirm with the AEAT]]. The deadline is now answered
 (1 July 2027); what remains is the submission-ordering question and the tax-case mapping.
+
+### Coding standard
+
+`@Symfony` via php-cs-fixer is the low-friction default for a greenfield Symfony project and is what
+[[naming#Case conventions]] assumes. Note it differs from the owner's Litmind house style, which
+uses tabs and no spaces around string concatenation dots. Easy to switch either way, but pick before
+the first thousand lines rather than after.
 
 ### Rectificativa type mapping
 

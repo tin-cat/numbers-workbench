@@ -32,6 +32,10 @@ customers. Those that were emailed need rectificativas; any that never left the 
 anulación case, had a record been sent. **CONFIRM the exact boundary with the gestor**, because it
 turns on whether a document was issued in the legal sense, not on whether a row was written.
 
+> The AEAT field names below are **the wire format**, used only inside the submission adapter. Our
+> domain calls these things `CorrectionReason` and `CorrectionMethod`, in English, like everything
+> else. See [[naming]].
+
 ## `TipoFactura`: the legal grounds for the correction
 
 **This is the part that is not obvious: R1 to R5 are not severity levels or amounts. They say

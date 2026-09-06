@@ -127,10 +127,11 @@ and both are explicit calls, never a side effect of storage or display.
 
 ## The invariant that catches everything
 
-A `TaxBreakdown` value object that guarantees, in its constructor, that
+A `TaxBreakdown` value object (English field names throughout, see [[naming]]) that guarantees, in
+its constructor, that
 
 ```
-base + iva - irpf == total
+taxableBase + vat - withholding == total
 ```
 
 exactly, as integers, and refuses to exist otherwise. Rounding errors are invisible until they break
